@@ -34,6 +34,12 @@ def _ensure_node_playwright_browsers(repo: Path) -> None:
     )
 
 
+def _uv_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.setdefault("UV_LINK_MODE", "copy")
+    return env
+
+
 # ── Bootstrap: create venv + install deps automatically on first run ─────────
 # Only stdlib imports above. _bootstrap() is called explicitly — either from
 # swarm.py (via `from run import _bootstrap; _bootstrap()`) or from the
@@ -54,7 +60,7 @@ def _bootstrap() -> None:
         uv_cmd = ["uv", "pip", "install", "--system", "--python", sys.executable, str(_repo)]
         if sys.platform != "win32":
             uv_cmd.append("--break-system-packages")
-        subprocess.check_call(uv_cmd)
+        subprocess.check_call(uv_cmd, env=_uv_env())
         print("\nDone.\n")
 
     # Ensure the Playwright browser binary for the installed playwright version
