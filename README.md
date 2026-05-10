@@ -17,8 +17,6 @@ Create polished slide decks, research reports, data visualizations, documents, i
 
 Built on [Agency Swarm](https://github.com/VRSEN/agency-swarm) — the framework powering real AI swarms.<br>
 
-<a href="https://www.producthunt.com/products/openswarm?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-openswarm" target="_blank" rel="noopener noreferrer"><img alt="OpenSwarm - Claude Code for everything except coding | Product Hunt" width="200" height="43" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1141784&amp;theme=light&amp;t=1778266049404"></a>
-
 ---
 
 > 💼 **Investor or looking to integrate AI agents into your SaaS?**
