@@ -10,6 +10,7 @@ const path = require('path')
 
 const scriptPath = fs.realpathSync(__filename)
 const packageDir = path.dirname(path.dirname(scriptPath))
+const packageJson = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8'))
 
 function resolveAgentswarm(startDir) {
   let current = startDir
@@ -35,7 +36,7 @@ function getBinaryName() {
 function getDownloadUrl(binaryName) {
   const explicit = process.env.OPENSWARM_TUI_URL && process.env.OPENSWARM_TUI_URL.trim()
   if (explicit) return explicit
-  return `https://github.com/VRSEN/OpenSwarm/releases/latest/download/${binaryName}`
+  return `https://github.com/VRSEN/OpenSwarm/releases/download/v${packageJson.version}/${binaryName}`
 }
 
 function resolveCustomBinary(binaryPath) {
