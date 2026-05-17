@@ -43,12 +43,12 @@ jobs:
           AGENTSWARM_PRODUCT_STARTER_REPO: VRSEN/OpenSwarm
           AGENTSWARM_PRODUCT_STARTER_FOLDER: openswarm
           AGENTSWARM_PRODUCT_ENTRY_FILES: swarm.py,agency.py
-          AGENTSWARM_PRODUCT_VERSION: 1.0.1-rc.3
+          AGENTSWARM_PRODUCT_VERSION: 1.0.1-rc.4
         run: |
           bun install
           cd packages/opencode
           bun run script/build.ts --single --skip-install
-          test "$(./dist/agentswarm-cli-darwin-arm64/bin/agentswarm --version)" = "1.0.1-rc.3"
+          test "$(./dist/agentswarm-cli-darwin-arm64/bin/agentswarm --version)" = "1.0.1-rc.4"
       - name: Test startup
         shell: bash
         run: |
