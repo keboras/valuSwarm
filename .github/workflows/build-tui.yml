@@ -142,16 +142,19 @@ jobs:
             platform: windows
             arch: x64
             baseline: false
+            build_all: false
             asset: agentswarm-windows-x64.exe
-          - os: windows-latest
+          - os: ubuntu-latest
             platform: windows
             arch: x64
             baseline: true
+            build_all: true
             asset: agentswarm-windows-x64-baseline.exe
           - os: windows-11-arm
             platform: windows
             arch: arm64
             baseline: false
+            build_all: false
             asset: agentswarm-windows-arm64.exe
 
     runs-on: ${{ matrix.os }}
@@ -173,6 +176,8 @@ jobs:
       - name: Build binary
         working-directory: agentswarm-cli/packages/opencode
         env:
+          BUILD_ALL: ${{ matrix.build_all || false }}
+          BASELINE: ${{ matrix.baseline }}
           OPENCODE_CHANNEL: ${{ needs.prepare.outputs.npm_tag }}
           AGENTSWARM_PRODUCT_DISPLAY_NAME: OpenSwarm
           AGENTSWARM_PRODUCT_COMMAND: openswarm
@@ -191,16 +196,22 @@ jobs:
           AGENTSWARM_PRODUCT_WORDMARK_LINES: '[""," ██████╗ ██████╗ ███████╗███╗   ██╗ ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║ ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║ ███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║ ╚════██║██║███╗██║██╔══██╗██╔══██╗██║╚██╔╝██║","╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
           AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: standalone
           AGENTSWARM_PRODUCT_VERSION: ${{ needs.prepare.outputs.release_version }}
-        run: bun run script/build.ts --single --skip-install ${{ matrix.baseline && '--baseline' || '' }}
-
-      - name: Rename binary (Unix)
-        if: matrix.platform != 'windows'
         run: |
-          mv agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.baseline && '-baseline' || '' }}/bin/agentswarm \
+          node -e "const cp=require('child_process');const all=process.env.BUILD_ALL==='true';const args=all?['run','script/build.ts']:['run','script/build.ts','--single','--skip-install',...(process.env.BASELINE==='true'?['--baseline']:[])];cp.execFileSync('bun',args,{stdio:'inherit'});"
+
+      - name: Rename binary (Unix runner)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          binary="agentswarm"
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            binary="agentswarm.exe"
+          fi
+          mv agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.baseline && '-baseline' || '' }}/bin/$binary \
              ${{ matrix.asset }}
 
-      - name: Rename binary (Windows)
-        if: matrix.platform == 'windows'
+      - name: Rename binary (Windows runner)
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Move-Item agentswarm-cli/packages/opencode/dist/agentswarm-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.baseline && '-baseline' || '' }}/bin/agentswarm.exe `
