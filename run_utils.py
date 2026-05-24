@@ -5,6 +5,84 @@ import shutil
 import tempfile
 from pathlib import Path
 
+_PRODUCT_TUI_LOGO_LEFT = (
+    '["                                    ",'
+    '" ██████╗ ██████╗ ███████╗███╗   ██╗",'
+    '"██╔═══██╗██╔══██╗██╔════╝████╗  ██║",'
+    '"██║   ██║██████╔╝█████╗  ██╔██╗ ██║",'
+    '"██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║",'
+    '"╚██████╔╝██║     ███████╗██║ ╚████║",'
+    '" ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝"]'
+)
+_PRODUCT_TUI_LOGO_RIGHT = (
+    '["",'
+    '"███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗",'
+    '"██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║",'
+    '"███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║",'
+    '"╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║",'
+    '"███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║",'
+    '"╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+)
+_PRODUCT_WORDMARK_LINES = (
+    '["",'
+    '" ██████╗ ██████╗ ███████╗███╗   ██╗ ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗",'
+    '"██╔═══██╗██╔══██╗██╔════╝████╗  ██║ ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║",'
+    '"██║   ██║██████╔╝█████╗  ██╔██╗ ██║ ███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║",'
+    '"██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║ ╚════██║██║███╗██║██╔══██╗██╔══██╗██║╚██╔╝██║",'
+    '"╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║",'
+    '" ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+)
+
+
+def _configure_product_env() -> None:
+    os.environ.setdefault("AGENTSWARM_PRODUCT_SKIP_POST_AUTH_MODEL_SELECTION", "true")
+    os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_LEFT", _PRODUCT_TUI_LOGO_LEFT)
+    os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT", _PRODUCT_TUI_LOGO_RIGHT)
+    os.environ.setdefault("AGENTSWARM_PRODUCT_WORDMARK_LINES", _PRODUCT_WORDMARK_LINES)
+
+
+def _preload_agentswarm_bin(repo: Path | None = None) -> None:
+    # Bootstrap may install python-dotenv, so preserve this one override with stdlib.
+    if "AGENTSWARM_BIN" in os.environ:
+        return
+
+    roots = [repo] if repo else [Path.cwd(), Path(__file__).resolve().parent]
+    seen: set[Path] = set()
+
+    for root in roots:
+        if root is None:
+            continue
+        path = root.resolve() / ".env"
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+
+        for line in lines:
+            value = line.strip()
+            if not value or value.startswith("#"):
+                continue
+            if value.startswith("export "):
+                value = value.removeprefix("export ").lstrip()
+
+            key, sep, raw = value.partition("=")
+            if sep != "=" or key.strip() != "AGENTSWARM_BIN":
+                continue
+
+            raw = raw.strip()
+            if raw[:1] in {"'", '"'}:
+                quote = raw[0]
+                end = raw.find(quote, 1)
+                raw = raw[1:end] if end != -1 else raw[1:]
+            else:
+                raw = raw.split(" #", 1)[0].strip()
+            os.environ["AGENTSWARM_BIN"] = raw
+            return
+
+
 def _resolve_bin_name() -> str:
     """Return the platform+arch-specific TUI binary filename."""
     import platform
@@ -15,6 +93,62 @@ def _resolve_bin_name() -> str:
     if sys.platform == "darwin":
         return f"agentswarm-darwin-{arch}"
     return f"agentswarm-linux-{arch}"
+
+
+def _resolve_bin_names() -> list[str]:
+    name = _resolve_bin_name()
+    names = [name]
+    stem, suffix = (name[:-4], ".exe") if name.endswith(".exe") else (name, "")
+    if stem.endswith("-x64"):
+        names.append(f"{stem}-baseline{suffix}")
+    return names
+
+
+def _is_tui_binary_runnable(path: Path) -> bool:
+    try:
+        stat = path.stat()
+        if not stat.st_size:
+            return False
+        if sys.platform != "win32" and not os.access(path, os.X_OK):
+            path.chmod(0o755)
+        result = subprocess.run(
+            [str(path), "--version"],
+            env={**os.environ, "AGENTSWARM_LAUNCHER": "0"},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15,
+        )
+    except Exception:
+        return False
+    return result.returncode == 0
+
+
+def _download_tui_binary(repo: Path, name: str) -> Path | None:
+    import urllib.request
+
+    path = repo / name
+    url = f"https://github.com/VRSEN/OpenSwarm/releases/latest/download/{name}"
+    print("Downloading OpenSwarm TUI, please wait…\n")
+    try:
+        urllib.request.urlretrieve(url, str(path))
+        if sys.platform != "win32":
+            path.chmod(0o755)
+        print("\nDone.\n")
+    except Exception:
+        path.unlink(missing_ok=True)
+        return None
+    return path
+
+
+def _resolve_tui_binary(repo: Path, download: bool) -> Path | None:
+    for name in _resolve_bin_names():
+        path = repo / name
+        if not path.exists() and download:
+            path = _download_tui_binary(repo, name) or path
+        if path.exists() and _is_tui_binary_runnable(path):
+            return path
+    return None
 
 
 def _ensure_node_playwright_browsers(repo: Path) -> None:
@@ -44,8 +178,8 @@ def _uv_env() -> dict[str, str]:
 
 # ── Bootstrap: create venv + install deps automatically on first run ─────────
 # Only stdlib imports above. _bootstrap() is called explicitly — either from
-# swarm.py (via `from run import _bootstrap; _bootstrap()`) or from the
-# __main__ guard below — never at module level, so `from run import _bootstrap`
+# swarm.py (via `from run_utils import _bootstrap; _bootstrap()`) or from the
+# __main__ guard below — never at module level, so `from run_utils import _bootstrap`
 # is safe to call from outside the venv.
 def _bootstrap() -> None:
     _repo = Path(__file__).resolve().parent
@@ -141,19 +275,12 @@ def _bootstrap() -> None:
             pass
 
     # Download the OpenSwarm TUI binary from GitHub Releases if missing.
-    _bin_name = _resolve_bin_name()
-    _bin_path = _repo / _bin_name
-    if not _bin_path.exists():
-        import urllib.request
-        _bin_url = f"https://github.com/VRSEN/OpenSwarm/releases/latest/download/{_bin_name}"
-        print("Downloading OpenSwarm TUI, please wait…\n")
-        try:
-            urllib.request.urlretrieve(_bin_url, str(_bin_path))
-            if sys.platform != "win32":
-                _bin_path.chmod(0o755)
-            print("\nDone.\n")
-        except Exception:
-            print("Warning: Could not download OpenSwarm TUI. The terminal UI will use the default.\n")
+    if not os.getenv("AGENTSWARM_BIN"):
+        _bin_path = _resolve_tui_binary(_repo, download=True)
+        if _bin_path:
+            os.environ["AGENTSWARM_BIN"] = str(_bin_path)
+        else:
+            print("Warning: Could not download a runnable OpenSwarm TUI. The terminal UI will use the default.\n")
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -232,16 +359,20 @@ def _configure_demo_console() -> None:
 
 
 def main() -> None:
+    _preload_agentswarm_bin()
+    _bootstrap()
+
     from dotenv import load_dotenv
     load_dotenv()
 
     os.environ.setdefault("PYTHONUTF8", "1")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    _configure_product_env()
 
     if not os.getenv("AGENTSWARM_BIN"):
         _repo = Path(__file__).resolve().parent
-        local_exe = _repo / _resolve_bin_name()
-        if local_exe.exists():
+        local_exe = _resolve_tui_binary(_repo, download=True)
+        if local_exe:
             os.environ["AGENTSWARM_BIN"] = str(local_exe)
 
     # Disable OpenAI Agents SDK tracing for terminal demo runs.
@@ -303,5 +434,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    _bootstrap()
     main()

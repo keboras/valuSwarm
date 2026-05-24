@@ -7,6 +7,7 @@ on:
       - '.github/workflows/test-mac.yml'
       - 'bin/openswarm'
       - 'package.json'
+      - 'scripts/smoke-openswarm-launcher.js'
 
 jobs:
   test:
@@ -16,13 +17,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Smoke-test launcher platform resolution
+        run: node scripts/smoke-openswarm-launcher.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - uses: actions/checkout@v4
         with:
           repository: VRSEN/agentswarm-cli
-          ref: v1.4.34
+          ref: v1.4.35
           path: agentswarm-cli
       - uses: oven-sh/setup-bun@v2
         with:
@@ -42,7 +45,11 @@ jobs:
           AGENTSWARM_PRODUCT_MDNS_DOMAIN: openswarm.local
           AGENTSWARM_PRODUCT_STARTER_REPO: VRSEN/OpenSwarm
           AGENTSWARM_PRODUCT_STARTER_FOLDER: openswarm
-          AGENTSWARM_PRODUCT_ENTRY_FILES: swarm.py,agency.py
+          AGENTSWARM_PRODUCT_ENTRY_FILES: swarm.py
+          AGENTSWARM_PRODUCT_TUI_LOGO_LEFT: '["                                    "," ██████╗ ██████╗ ███████╗███╗   ██╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║","╚██████╔╝██║     ███████╗██║ ╚████║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝"]'
+          AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: '["","███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║","███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║","╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+          AGENTSWARM_PRODUCT_WORDMARK_LINES: '[""," ██████╗ ██████╗ ███████╗███╗   ██╗ ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║ ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║ ███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║ ╚════██║██║███╗██║██╔══██╗██╔══██╗██║╚██╔╝██║","╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
+          AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: standalone
           AGENTSWARM_PRODUCT_VERSION: 1.0.1-rc.4
         run: |
           bun install
@@ -58,7 +65,6 @@ jobs:
           import os
           import pathlib
           import platform
-          import re
           import subprocess
           import sys
           import tempfile
@@ -134,12 +140,12 @@ jobs:
           else:
               listing = None
 
-          failure_runs = []
+          missing_runs = []
           invalid_runs = []
           success_runs = []
           if binary is not None:
-              failure_env = {**env, "OPENSWARM_TUI_URL": f"{base_url}/missing/{binary_name}"}
-              failure_runs = [run_version(binary, root, failure_env) for _ in range(2)]
+              missing_env = {**env, "OPENSWARM_TUI_URL": f"{base_url}/missing/{binary_name}"}
+              missing_runs = [run_version(binary, root, missing_env) for _ in range(2)]
 
               invalid_binary = release_dir / binary_name
               invalid_binary.write_text("#!/bin/sh\nkill -9 $$\n", encoding="utf-8")
@@ -174,8 +180,8 @@ jobs:
                   "" if listing is None else listing.stderr,
               ]
               + [
-                  f"=== fallback run {idx} stdout ===\n{run.stdout}\n=== fallback run {idx} stderr ===\n{run.stderr}"
-                  for idx, run in enumerate(failure_runs, start=1)
+                  f"=== missing custom TUI run {idx} stdout ===\n{run.stdout}\n=== missing custom TUI run {idx} stderr ===\n{run.stderr}"
+                  for idx, run in enumerate(missing_runs, start=1)
               ]
               + [
                   f"=== invalid run {idx} stdout ===\n{run.stdout}\n=== invalid run {idx} stderr ===\n{run.stderr}"
@@ -196,9 +202,13 @@ jobs:
               print("FAILED: expected launcher not found after npm install")
               sys.exit(1)
 
-          for idx, run in enumerate(failure_runs, start=1):
-              if run.returncode != 0:
-                  print(f"FAILED: fallback run {idx} exited with {run.returncode}")
+          for idx, run in enumerate(missing_runs, start=1):
+              if run.returncode == 0:
+                  print(f"FAILED: missing custom TUI run {idx} unexpectedly succeeded")
+                  sys.exit(1)
+              stderr = run.stderr.lower()
+              if "custom openswarm tui unavailable" not in stderr or "openswarm_tui_url" not in stderr:
+                  print(f"FAILED: missing custom TUI run {idx} did not print actionable custom TUI unavailable message")
                   sys.exit(1)
 
           for idx, run in enumerate(success_runs, start=1):
@@ -207,8 +217,12 @@ jobs:
                   sys.exit(1)
 
           for idx, run in enumerate(invalid_runs, start=1):
-              if run.returncode != 0:
-                  print(f"FAILED: invalid run {idx} exited with {run.returncode}")
+              if run.returncode == 0:
+                  print(f"FAILED: invalid run {idx} unexpectedly succeeded")
+                  sys.exit(1)
+              stderr = run.stderr.lower()
+              if "custom openswarm tui unavailable" not in stderr or "openswarm_tui_url" not in stderr:
+                  print(f"FAILED: invalid run {idx} did not print actionable custom TUI unavailable message")
                   sys.exit(1)
 
           banned = [
@@ -222,30 +236,6 @@ jobs:
               if needle.lower() in lower_output:
                   print(f"FAILED: found unexpected output: {needle}")
                   sys.exit(1)
-
-          fallback_version = next(
-              (
-                  line.strip()
-                  for line in reversed(failure_runs[-1].stdout.splitlines())
-                  if line.strip()
-              ),
-              "",
-          )
-          if not re.fullmatch(r"\d+\.\d+\.\d+", fallback_version):
-              print(f"FAILED: unexpected fallback version output: {fallback_version!r}")
-              sys.exit(1)
-
-          invalid_version = next(
-              (
-                  line.strip()
-                  for line in reversed(invalid_runs[-1].stdout.splitlines())
-                  if line.strip()
-              ),
-              "",
-          )
-          if not re.fullmatch(r"\d+\.\d+\.\d+", invalid_version):
-              print(f"FAILED: unexpected invalid-binary fallback version output: {invalid_version!r}")
-              sys.exit(1)
 
           custom_version = next(
               (
