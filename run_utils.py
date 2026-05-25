@@ -39,6 +39,7 @@ def _configure_product_env() -> None:
     os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_LEFT", _PRODUCT_TUI_LOGO_LEFT)
     os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT", _PRODUCT_TUI_LOGO_RIGHT)
     os.environ.setdefault("AGENTSWARM_PRODUCT_WORDMARK_LINES", _PRODUCT_WORDMARK_LINES)
+    os.environ.setdefault("AGENTSWARM_PRODUCT_ENABLE_ADDONS", "true")
 
 
 def _preload_agentswarm_bin(repo: Path | None = None) -> None:
