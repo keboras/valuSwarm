@@ -47,6 +47,7 @@ const downstreamEnv = {
   AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: JSON.stringify(productTuiLogoRight),
   AGENTSWARM_PRODUCT_WORDMARK_LINES: JSON.stringify(productWordmarkLines),
   AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: 'standalone',
+  AGENTSWARM_PRODUCT_ENABLE_ADDONS: 'true',
   AGENTSWARM_PRODUCT_VERSION: packageJson.version,
 }
 

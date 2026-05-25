@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  AGENTSWARM_CLI_VERSION: 1.4.36
+  AGENTSWARM_CLI_VERSION: 1.4.37-rc.1
 
 jobs:
   prepare:
@@ -195,6 +195,7 @@ jobs:
           AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: '["","███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","╚════██║██║███╗██║██╔══██║██╔══██╗██║╚██╔╝██║","███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║","╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
           AGENTSWARM_PRODUCT_WORDMARK_LINES: '[""," ██████╗ ██████╗ ███████╗███╗   ██╗ ███████╗██╗    ██╗ █████╗ ██████╗ ███╗   ███╗","██╔═══██╗██╔══██╗██╔════╝████╗  ██║ ██╔════╝██║    ██║██╔══██╗██╔══██╗████╗ ████║","██║   ██║██████╔╝█████╗  ██╔██╗ ██║ ███████╗██║ █╗ ██║███████║██████╔╝██╔████╔██║","██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║ ╚════██║██║███╗██║██╔══██╗██╔══██╗██║╚██╔╝██║","╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║"," ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
           AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: standalone
+          AGENTSWARM_PRODUCT_ENABLE_ADDONS: "true"
           AGENTSWARM_PRODUCT_VERSION: ${{ needs.prepare.outputs.release_version }}
         run: |
           node -e "const cp=require('child_process');const all=process.env.BUILD_ALL==='true';const args=all?['run','script/build.ts']:['run','script/build.ts','--single','--skip-install',...(process.env.BASELINE==='true'?['--baseline']:[])];cp.execFileSync('bun',args,{stdio:'inherit'});"
