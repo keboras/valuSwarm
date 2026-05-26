@@ -158,6 +158,7 @@ jobs:
             asset: agentswarm-windows-arm64.exe
 
     runs-on: ${{ matrix.os }}
+    environment: ${{ needs.prepare.outputs.is_prerelease == 'true' && 'dev' || 'prod' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -173,11 +174,9 @@ jobs:
         shell: bash
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
         run: |
           set -euo pipefail
           test -n "$POSTHOG_API_KEY"
-          test -n "$POSTHOG_HOST"
 
       - name: Install dependencies
         working-directory: agentswarm-cli
