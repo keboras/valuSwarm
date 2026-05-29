@@ -11,7 +11,7 @@ from shared_tools.openai_client_utils import get_caller_openai_credentials
 
 def _refresh_runtime_env() -> None:
     """Reload add-on keys written through the TUI into the running process."""
-    _load_openswarm_dotenv()
+    _load_openswarm_dotenv(override=True)
 
 
 def _configured(value: bool) -> str:
