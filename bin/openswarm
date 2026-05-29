@@ -30,6 +30,25 @@ const productTuiLogoRight = [
   '╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝',
 ]
 const productWordmarkLines = productTuiLogoLeft.map((line, index) => `${line} ${productTuiLogoRight[index] ?? ''}`.trimEnd())
+const productAddons = [
+  { id: 'search', title: 'Web Search', keys: ['SEARCH_API_KEY'] },
+  { id: 'anthropic', title: 'Anthropic Claude', keys: ['ANTHROPIC_API_KEY'], excludeProviders: ['anthropic'] },
+  { id: 'composio', title: 'Composio', keys: ['COMPOSIO_API_KEY', 'COMPOSIO_USER_ID'] },
+  { id: 'google', title: 'Google Gemini', keys: ['GOOGLE_API_KEY'], excludeProviders: ['google'] },
+  { id: 'fal', title: 'Fal.ai', keys: ['FAL_KEY'] },
+  { id: 'pexels', title: 'Pexels', keys: ['PEXELS_API_KEY'] },
+  { id: 'pixabay', title: 'Pixabay', keys: ['PIXABAY_API_KEY'] },
+  { id: 'unsplash', title: 'Unsplash', keys: ['UNSPLASH_ACCESS_KEY'] },
+]
+function resolveStateRoot() {
+  const explicit = process.env.OPENSWARM_STATE_ROOT && process.env.OPENSWARM_STATE_ROOT.trim()
+  if (explicit) return path.resolve(explicit)
+  if (process.platform === 'win32') {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), 'OpenSwarm')
+  }
+  return path.join(os.homedir(), '.openswarm')
+}
+
 const downstreamEnv = {
   AGENTSWARM_PRODUCT_DISPLAY_NAME: 'OpenSwarm',
   AGENTSWARM_PRODUCT_COMMAND: 'openswarm',
@@ -47,7 +66,8 @@ const downstreamEnv = {
   AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT: JSON.stringify(productTuiLogoRight),
   AGENTSWARM_PRODUCT_WORDMARK_LINES: JSON.stringify(productWordmarkLines),
   AGENTSWARM_PRODUCT_PYTHON_ENVIRONMENT: 'standalone',
-  AGENTSWARM_PRODUCT_ENABLE_ADDONS: 'true',
+  AGENTSWARM_PRODUCT_ADDONS: JSON.stringify(productAddons),
+  AGENTSWARM_PRODUCT_STATE_ROOT: resolveStateRoot(),
   AGENTSWARM_PRODUCT_VERSION: packageJson.version,
 }
 

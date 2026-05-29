@@ -32,6 +32,30 @@ _PRODUCT_WORDMARK_LINES = (
     '"╚██████╔╝██║     ███████╗██║ ╚████║ ███████║╚███╔███╔╝██║  ██║██║  ██║██║ ╚═╝ ██║",'
     '" ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝ ╚══════╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝"]'
 )
+_PRODUCT_ADDONS = (
+    '[{"id":"search","title":"Web Search","keys":["SEARCH_API_KEY"]},'
+    '{"id":"anthropic","title":"Anthropic Claude","keys":["ANTHROPIC_API_KEY"],"excludeProviders":["anthropic"]},'
+    '{"id":"composio","title":"Composio","keys":["COMPOSIO_API_KEY","COMPOSIO_USER_ID"]},'
+    '{"id":"google","title":"Google Gemini","keys":["GOOGLE_API_KEY"],"excludeProviders":["google"]},'
+    '{"id":"fal","title":"Fal.ai","keys":["FAL_KEY"]},'
+    '{"id":"pexels","title":"Pexels","keys":["PEXELS_API_KEY"]},'
+    '{"id":"pixabay","title":"Pixabay","keys":["PIXABAY_API_KEY"]},'
+    '{"id":"unsplash","title":"Unsplash","keys":["UNSPLASH_ACCESS_KEY"]}]'
+)
+
+
+def _openswarm_state_root() -> Path:
+    override = os.getenv("OPENSWARM_STATE_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    if sys.platform == "win32":
+        return Path(os.getenv("APPDATA") or (Path.home() / "AppData" / "Roaming")) / "OpenSwarm"
+    return Path.home() / ".openswarm"
+
+
+def _load_openswarm_dotenv(*, override: bool = False) -> bool:
+    from dotenv import load_dotenv
+    return bool(load_dotenv(dotenv_path=_openswarm_state_root() / ".env", override=override))
 
 
 def _configure_product_env() -> None:
@@ -39,7 +63,8 @@ def _configure_product_env() -> None:
     os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_LEFT", _PRODUCT_TUI_LOGO_LEFT)
     os.environ.setdefault("AGENTSWARM_PRODUCT_TUI_LOGO_RIGHT", _PRODUCT_TUI_LOGO_RIGHT)
     os.environ.setdefault("AGENTSWARM_PRODUCT_WORDMARK_LINES", _PRODUCT_WORDMARK_LINES)
-    os.environ.setdefault("AGENTSWARM_PRODUCT_ENABLE_ADDONS", "true")
+    os.environ.setdefault("AGENTSWARM_PRODUCT_ADDONS", _PRODUCT_ADDONS)
+    os.environ["AGENTSWARM_PRODUCT_STATE_ROOT"] = str(_openswarm_state_root())
 
 
 def _preload_agentswarm_bin(repo: Path | None = None) -> None:
@@ -47,7 +72,7 @@ def _preload_agentswarm_bin(repo: Path | None = None) -> None:
     if "AGENTSWARM_BIN" in os.environ:
         return
 
-    roots = [repo] if repo else [Path.cwd(), Path(__file__).resolve().parent]
+    roots = [_openswarm_state_root()]
     seen: set[Path] = set()
 
     for root in roots:
@@ -413,8 +438,7 @@ def main() -> None:
     _preload_agentswarm_bin()
     _bootstrap()
 
-    from dotenv import load_dotenv
-    load_dotenv()
+    _load_openswarm_dotenv()
 
     os.environ.setdefault("PYTHONUTF8", "1")
     os.environ.setdefault("PYTHONIOENCODING", "utf-8")
@@ -479,7 +503,7 @@ def main() -> None:
             print("\nLaunching setup wizard…")
             from onboard import run_onboarding
             run_onboarding()
-            load_dotenv(override=True)
+            _load_openswarm_dotenv(override=True)
         else:
             break
 
