@@ -1,6 +1,6 @@
 # OpenSwarm — Customization Guide
 
-This file gives coding agents (Cursor, Claude Code, Codex, etc.) everything they need to understand and customize this swarm. Read it before making any changes.
+This file gives coding agents everything they need to understand and customize this swarm. Read it before making any changes.
 
 ---
 
