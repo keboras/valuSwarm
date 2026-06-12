@@ -48,3 +48,4 @@ moviepy<2
 fal-client
 httpx
 imageio-ffmpeg
+cryptography>=42.0.0

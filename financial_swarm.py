@@ -1,7 +1,6 @@
 """
-SovereignFlow — Financial swarm for self-employed wealth building.
+Architect Blueprint — Cash Flow Mastery wealth machine.
 
-Entry point separate from OpenSwarm general-purpose agency.
 Run: python financial_swarm.py
 """
 
@@ -53,28 +52,38 @@ def create_agency(load_threads_callback=None):
     from agency_swarm import Agency
     from agency_swarm.tools import Handoff, SendMessage
 
-    from sovereignty_orchestrator import create_sovereignty_orchestrator
-    from discipline_controller import create_discipline_controller
-    from arbitrage_scout import create_arbitrage_scout
-    from tax_strategist import create_tax_strategist
-    from wealth_architect import create_wealth_architect
+    from architect_orchestrator import create_architect_orchestrator
+    from behavioral_mirror import create_behavioral_mirror
+    from cash_flow_engineer import create_cash_flow_engineer
+    from opportunity_scanner import create_opportunity_scanner
+    from leverage_strategist import create_leverage_strategist
+    from reputation_validator import create_reputation_validator
+    from legacy_architect import create_legacy_architect
     from financial_analyst import create_financial_analyst
 
-    orchestrator = create_sovereignty_orchestrator()
-    discipline = create_discipline_controller()
-    arbitrage = create_arbitrage_scout()
-    tax = create_tax_strategist()
-    wealth = create_wealth_architect()
-    analyst = create_financial_analyst()
+    orchestrator = create_architect_orchestrator()
+    behavioral_mirror = create_behavioral_mirror()
+    cash_flow_engineer = create_cash_flow_engineer()
+    opportunity_scanner = create_opportunity_scanner()
+    leverage_strategist = create_leverage_strategist()
+    reputation_validator = create_reputation_validator()
+    legacy_architect = create_legacy_architect()
+    financial_analyst = create_financial_analyst()
 
-    specialists = [discipline, arbitrage, tax, wealth, analyst]
+    core_six = [
+        behavioral_mirror,
+        cash_flow_engineer,
+        opportunity_scanner,
+        leverage_strategist,
+        reputation_validator,
+        legacy_architect,
+    ]
+    specialists = core_six + [financial_analyst]
 
-    # Orchestrator routes to all specialists
     send_message_flows = [
         (orchestrator, specialist, SendMessage) for specialist in specialists
     ]
 
-    # Specialists can hand off to each other and back to orchestrator
     all_agents = [orchestrator] + specialists
     handoff_flows = [
         (a > b, Handoff)
@@ -87,7 +96,7 @@ def create_agency(load_threads_callback=None):
         orchestrator,
         *specialists,
         communication_flows=send_message_flows + handoff_flows,
-        name="SovereignFlow",
+        name="Architect Blueprint",
         shared_instructions="financial_shared_instructions.md",
         load_threads_callback=load_threads_callback,
     )
