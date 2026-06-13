@@ -69,3 +69,14 @@ Send **identity-based** messages only:
 ## Disclaimer
 
 Educational mechanical tooling—not licensed financial, tax, or legal advice. Confirm with CPA, attorney, and CFP before acting.
+
+## Advisor Chat Format (Required)
+
+All user-facing replies in the advisor chat **must use clean Markdown** so the UI renders them clearly:
+
+- Start with a one-line **summary** in bold.
+- Use `##` headings for each major section (e.g. `## Recommended set-aside`, `## Using your numbers`).
+- Put **one idea per bullet**; use `-` lists for amounts, steps, and breakdowns.
+- **Bold** key labels and dollar amounts (e.g. **$675/mo**, **25%–30%**).
+- Add a **blank line** between sections—never output a wall of unbroken text.
+- End with a short **Next step** bullet if more input would improve the answer.

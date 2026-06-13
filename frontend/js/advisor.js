@@ -11,11 +11,91 @@ const STARTERS = [
 let financialSummary = null;
 let chatHistory = [];
 
-function appendMessage(role, text) {
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function inlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderMarkdown(source) {
+  const lines = String(source).split("\n");
+  const out = [];
+  let inList = false;
+
+  const closeList = () => {
+    if (inList) {
+      out.push("</ul>");
+      inList = false;
+    }
+  };
+
+  for (const raw of lines) {
+    const trimmed = raw.trim();
+
+    if (!trimmed) {
+      closeList();
+      continue;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      closeList();
+      out.push(`<h4>${inlineMarkdown(trimmed.slice(4))}</h4>`);
+      continue;
+    }
+    if (trimmed.startsWith("## ")) {
+      closeList();
+      out.push(`<h3>${inlineMarkdown(trimmed.slice(3))}</h3>`);
+      continue;
+    }
+    if (trimmed.startsWith("# ")) {
+      closeList();
+      out.push(`<h3>${inlineMarkdown(trimmed.slice(2))}</h3>`);
+      continue;
+    }
+
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)/);
+    if (bulletMatch) {
+      if (!inList) {
+        out.push("<ul>");
+        inList = true;
+      }
+      out.push(`<li>${inlineMarkdown(bulletMatch[1])}</li>`);
+      continue;
+    }
+
+    const numberedMatch = trimmed.match(/^\d+\.\s+(.+)/);
+    if (numberedMatch) {
+      closeList();
+      out.push(`<p class="chat-md-numbered">${inlineMarkdown(trimmed)}</p>`);
+      continue;
+    }
+
+    closeList();
+    out.push(`<p>${inlineMarkdown(trimmed)}</p>`);
+  }
+
+  closeList();
+  return `<div class="chat-md">${out.join("")}</div>`;
+}
+
+function appendMessage(role, text, { markdown = false } = {}) {
   const log = document.getElementById("chat-log");
   const div = document.createElement("div");
   div.className = role === "user" ? "chat-user" : "chat-assistant";
-  div.textContent = text;
+  if (markdown && role === "assistant") {
+    div.innerHTML = renderMarkdown(text);
+  } else {
+    div.textContent = text;
+  }
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
 }
@@ -57,7 +137,7 @@ async function sendMessage(text) {
 
   const data = await res.json();
   const reply = data.response || data.final_output || data.message || JSON.stringify(data);
-  appendMessage("assistant", String(reply));
+  appendMessage("assistant", String(reply), { markdown: true });
   if (data.chat_history) chatHistory = data.chat_history;
 }
 
