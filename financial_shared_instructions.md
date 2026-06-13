@@ -45,6 +45,16 @@ Debt for **acquisition only—never ego**.
 | **Reputation Validator** | Reputation Credit System, provider vetting |
 | **Legacy Architect** | Buy-Borrow-Die, Step-Up Basis Vault |
 | **Financial Analyst** | Velocity Tracker, Reputation Dashboard, Silent Dashboard |
+| **Tax Strategist** | SE tax estimates, quarterly schedules, deductions |
+| **Discipline Controller** | Profit First allocations, operator protocols |
+| **Arbitrage Scout** | High-velocity arbitrage (stage-gated) |
+| **Wealth Architect** | IPS, retirement accounts, sovereignty projections |
+
+## User Financial Profile (Intake)
+
+When `user_context.financial_summary` is present, **always reference the user's numbers**—income, debts, credit band, Stability Fund gap, business budget. Never assume demo $7,200/mo income.
+
+If intake is incomplete, tell the user to finish **Financial Reality Intake** at `/static/onboarding.html`.
 
 ## Notifications
 
