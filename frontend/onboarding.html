@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Financial Reality Intake</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body class="onboarding">
+  <main class="container">
+    <header class="center">
+      <h1>Financial Reality Intake</h1>
+      <p class="muted">Your numbers — not demo data. Takes about 10 minutes.</p>
+      <p id="step-label" class="step-label"></p>
+    </header>
+    <p id="error" class="error"></p>
+    <p id="preview-box" class="card inner hidden"></p>
+
+    <section id="step-1" class="step card">
+      <h2>Step 1 — You</h2>
+      <form id="form-1">
+        <label>Your name <input name="display_name" required placeholder="Alex" /></label>
+        <label>Trade / skill <input name="primary_trade" placeholder="Web design, HVAC, consulting…" /></label>
+        <label>Work type
+          <select name="employment_type">
+            <option value="self_employed">Self-employed / freelancer</option>
+            <option value="business_owner">Business owner</option>
+            <option value="side_hustle">Side hustle + W-2</option>
+          </select>
+        </label>
+      </form>
+    </section>
+
+    <section id="step-2" class="step card hidden">
+      <h2>Step 2 — Cash flow</h2>
+      <form id="form-2">
+        <label>Monthly gross income ($) <input name="monthly_gross_income" type="number" min="1" step="0.01" required /></label>
+        <label>Monthly essentials ($) — rent, food, insurance, minimum debt payments
+          <input name="monthly_essentials" type="number" min="1" step="0.01" required />
+        </label>
+        <label>Stability Fund balance today ($) <input name="stability_fund_balance" type="number" min="0" step="0.01" value="0" /></label>
+        <label>Target months of essentials in fund
+          <select name="stability_fund_target_months">
+            <option value="3">3 months</option>
+            <option value="4" selected>4 months</option>
+            <option value="5">5 months</option>
+            <option value="6">6 months</option>
+          </select>
+        </label>
+      </form>
+    </section>
+
+    <section id="step-3" class="step card hidden">
+      <h2>Step 3 — Debts</h2>
+      <p class="muted small">List every debt. High-APR payoff is your best guaranteed return.</p>
+      <div id="debt-list"></div>
+      <button type="button" id="add-debt" class="btn btn-secondary btn-sm">+ Add debt</button>
+    </section>
+
+    <section id="step-4" class="step card hidden">
+      <h2>Step 4 — Credit snapshot</h2>
+      <p class="muted small">Self-reported for now — not pulled from a bureau.</p>
+      <form id="form-4">
+        <label>Score range
+          <select name="score_band">
+            <option value="excellent">Excellent (780+)</option>
+            <option value="good">Good (720–779)</option>
+            <option value="fair">Fair (660–719)</option>
+            <option value="poor">Poor (below 660)</option>
+            <option value="unknown">I don't know</option>
+          </select>
+        </label>
+        <label>Credit card utilization (% of limits) <input name="utilization_pct" type="number" min="0" max="100" value="30" /></label>
+        <label class="checkbox"><input type="checkbox" name="late_payments_12mo" /> Late payments in last 12 months</label>
+        <label class="checkbox"><input type="checkbox" name="collections" /> Collections on report</label>
+      </form>
+    </section>
+
+    <section id="step-5" class="step card hidden">
+      <h2>Step 5 — Business budget</h2>
+      <p class="muted small">Profit First style — percentages must sum to 100%.</p>
+      <form id="form-5">
+        <label>Business type <input name="business_type" placeholder="LLC consulting, sole prop…" /></label>
+        <label>Monthly business revenue ($) <input name="monthly_revenue" type="number" min="0" step="0.01" /></label>
+        <label>Profit % <input name="profit_pct" type="number" min="0" max="100" value="5" /></label>
+        <label>Tax reserve % <input name="tax_pct" type="number" min="0" max="100" value="15" /></label>
+        <label>Owner pay % <input name="owner_pay_pct" type="number" min="0" max="100" value="50" /></label>
+        <label>OpEx % <input name="opex_pct" type="number" min="0" max="100" value="30" /></label>
+      </form>
+    </section>
+
+    <section id="step-6" class="step card hidden">
+      <h2>Step 6 — Behavioral mirror (optional)</h2>
+      <p class="muted small">Optional footprint toggles for spending patterns — your Step 2 numbers stay authoritative.</p>
+      <div class="connect-grid">
+        <button type="button" class="connect-btn" data-source="banking">Connect banking (demo)</button>
+        <button type="button" class="connect-btn" data-source="calendar">Connect calendar (demo)</button>
+        <button type="button" class="connect-btn" data-source="screen_time">Connect screen time (demo)</button>
+      </div>
+      <p id="connect-status" class="muted small"></p>
+    </section>
+
+    <section id="step-7" class="step card hidden">
+      <h2>Step 7 — Contract</h2>
+      <p>For the next <strong>six months</strong>, you commit to the system's structural rules: 15/65/20, Fork Moments, and Creation Hour.</p>
+      <p class="contract-text">I choose direction over comfort. I am the architect—not the engine.</p>
+      <label class="checkbox">
+        <input type="checkbox" id="contract-check" />
+        I sign this contract with my future self
+      </label>
+      <p class="small muted disclaimer">Educational guidance only — not licensed tax, legal, or credit repair advice.</p>
+    </section>
+
+    <div class="btn-row">
+      <button type="button" id="btn-back" class="btn btn-secondary hidden">Back</button>
+      <button type="button" id="btn-next" class="btn">Continue</button>
+    </div>
+  </main>
+  <script type="module" src="/static/js/onboarding.js"></script>
+</body>
+</html>

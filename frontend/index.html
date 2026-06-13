@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Architect Blueprint — Command Center</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <nav class="nav" id="nav"></nav>
+  <main class="container" id="main-standard">
+    <p id="welcome-banner" class="identity hidden"></p>
+    <header>
+      <h1 id="greeting">Command Center</h1>
+      <p class="muted">Choose direction—not data entry. The mirror shows reality; you respond at Fork Moments.</p>
+    </header>
+    <p id="error" class="error"></p>
+
+    <section class="card" id="reality-card">
+      <h2>Your Financial Reality <span id="data-badge"></span></h2>
+      <div id="reality-grid" class="alloc-grid"></div>
+      <p id="snowball-line" class="muted small"></p>
+      <div class="btn-row" style="justify-content: flex-start; margin-top: 0.75rem;">
+        <a href="/static/onboarding.html" class="btn btn-secondary btn-sm">Edit my numbers</a>
+        <button type="button" id="reset-profile" class="btn btn-secondary btn-sm">Reset & start over</button>
+      </div>
+    </section>
+
+    <section class="card guide-card" id="start-guide">
+      <h2>Start here — your first week</h2>
+      <p class="muted small">Wealth here means systems (15/65/20, Stability Fund, skill density)—not typing receipts. Dollar numbers on this screen come from your onboarding audit (demo bank data until you connect a real account).</p>
+      <ol id="start-steps" class="guide-steps"></ol>
+    </section>
+
+    <section class="card" id="quick-wins-section">
+      <h2>Quick wins this week</h2>
+      <ul id="quick-wins-list" class="missions"></ul>
+      <h3 class="guide-sub">Opportunities</h3>
+      <ul id="opportunities-list" class="missions"></ul>
+      <p class="small muted disclaimer">Educational ideas — verify before deploying capital.</p>
+    </section>
+
+    <section class="card focus-control">
+      <h2>Focus Season / Creation Hour</h2>
+      <p class="muted small">Toggle Solitude Mode—minimal UI, mastery metrics only during your creation block.</p>
+      <div class="focus-row">
+        <label class="checkbox"><input type="checkbox" id="focus-toggle" /> Solitude Mode active</label>
+        <label>Creation Hour <input type="time" id="creation-hour" value="07:00" /></label>
+        <button type="button" id="focus-save" class="btn btn-secondary">Apply</button>
+      </div>
+      <p id="focus-msg" class="muted small"></p>
+    </section>
+
+    <section class="card" id="fork-section">
+      <h2>Fork Moments</h2>
+      <p class="muted small">Non-essential spend triggers a 72-hour pause. Acknowledge the emotion—choose architect, not reactor.</p>
+      <div id="active-pauses"></div>
+      <form id="fork-form" class="fork-form">
+        <input name="item" placeholder="What are you about to buy?" required />
+        <input name="amount" type="number" min="1" step="0.01" placeholder="Amount $" required />
+        <button type="submit" class="btn">Start Fork Moment</button>
+      </form>
+      <div id="emotion-panel" class="hidden card inner">
+        <p class="muted">What is driving this?</p>
+        <div class="emotion-btns">
+          <button type="button" data-emotion="stress">Stress</button>
+          <button type="button" data-emotion="boredom">Boredom</button>
+          <button type="button" data-emotion="status">Status</button>
+          <button type="button" data-emotion="social">Social</button>
+          <button type="button" data-emotion="comfort">Comfort</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Dollar Missions (15 / 65 / 20)</h2>
+      <p id="gap-message" class="muted small"></p>
+      <ul id="missions-list" class="missions"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Your Stage</h2>
+      <p class="stage-name" id="stage-name">—</p>
+      <div class="progress-track"><div class="progress-fill" id="stage-progress"></div></div>
+      <p id="next-action" class="next-action"></p>
+    </section>
+
+    <p id="identity-line" class="identity"></p>
+    <div id="recalibration" class="alert hidden"></div>
+  </main>
+
+  <main class="container hidden" id="main-solitude">
+    <h1>Creation Hour</h1>
+    <p class="identity" id="solitude-identity">You are building—not consuming.</p>
+    <div class="kpi-row">
+      <div class="kpi"><span class="label">Deep work today</span><span class="value" id="deep-work">—</span></div>
+      <div class="kpi"><span class="label">Integrity</span><span class="value" id="solitude-integrity">—</span></div>
+    </div>
+    <p class="muted small">Noise suppressed. Exit Solitude Mode from Command Center when your hour ends.</p>
+  </main>
+  <script type="module" src="/static/js/home.js"></script>
+</body>
+</html>

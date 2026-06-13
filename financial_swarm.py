@@ -1,7 +1,8 @@
 """
 Architect Blueprint — Cash Flow Mastery wealth machine.
 
-Run: python financial_swarm.py
+Run TUI: python financial_swarm.py
+Run API + UI: python server.py  (AGENCY=financial by default)
 """
 
 import os
@@ -53,13 +54,17 @@ def create_agency(load_threads_callback=None):
     from agency_swarm.tools import Handoff, SendMessage
 
     from architect_orchestrator import create_architect_orchestrator
+    from arbitrage_scout import create_arbitrage_scout
     from behavioral_mirror import create_behavioral_mirror
     from cash_flow_engineer import create_cash_flow_engineer
-    from opportunity_scanner import create_opportunity_scanner
-    from leverage_strategist import create_leverage_strategist
-    from reputation_validator import create_reputation_validator
-    from legacy_architect import create_legacy_architect
+    from discipline_controller import create_discipline_controller
     from financial_analyst import create_financial_analyst
+    from legacy_architect import create_legacy_architect
+    from leverage_strategist import create_leverage_strategist
+    from opportunity_scanner import create_opportunity_scanner
+    from reputation_validator import create_reputation_validator
+    from tax_strategist import create_tax_strategist
+    from wealth_architect import create_wealth_architect
 
     orchestrator = create_architect_orchestrator()
     behavioral_mirror = create_behavioral_mirror()
@@ -69,6 +74,10 @@ def create_agency(load_threads_callback=None):
     reputation_validator = create_reputation_validator()
     legacy_architect = create_legacy_architect()
     financial_analyst = create_financial_analyst()
+    tax_strategist = create_tax_strategist()
+    discipline_controller = create_discipline_controller()
+    arbitrage_scout = create_arbitrage_scout()
+    wealth_architect = create_wealth_architect()
 
     core_six = [
         behavioral_mirror,
@@ -78,7 +87,13 @@ def create_agency(load_threads_callback=None):
         reputation_validator,
         legacy_architect,
     ]
-    specialists = core_six + [financial_analyst]
+    specialists = core_six + [
+        financial_analyst,
+        tax_strategist,
+        discipline_controller,
+        arbitrage_scout,
+        wealth_architect,
+    ]
 
     send_message_flows = [
         (orchestrator, specialist, SendMessage) for specialist in specialists
