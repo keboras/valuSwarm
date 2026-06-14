@@ -12,7 +12,7 @@
     <p id="welcome-banner" class="identity hidden"></p>
     <header>
       <h1 id="greeting">Command Center</h1>
-      <p class="muted">Choose direction—not data entry. The mirror shows reality; you respond at Fork Moments.</p>
+      <p class="muted">Operator dashboard — business cash flow, Stability Fund, and stage gates. Not a paycheck budget app.</p>
     </header>
     <p id="error" class="error"></p>
 
@@ -24,6 +24,19 @@
         <a href="/static/onboarding.html" class="btn btn-secondary btn-sm">Edit my numbers</a>
         <button type="button" id="reset-profile" class="btn btn-secondary btn-sm">Reset & start over</button>
       </div>
+    </section>
+
+    <section class="card memory-card" id="memory-section">
+      <div class="memory-head">
+        <h2>What I remember about you</h2>
+        <a href="/static/advisor.html" class="btn btn-secondary btn-sm">Ask Advisor</a>
+      </div>
+      <p class="muted small">Facts your advisor saves across sessions — goals, constraints, and context you shared in chat.</p>
+      <div id="memory-summary" class="memory-summary"></div>
+      <ul id="memory-facts" class="memory-facts"></ul>
+      <p id="memory-empty" class="muted small hidden">No saved facts yet. Tell your advisor something worth remembering (state, tax target, business goals).</p>
+      <h3 class="guide-sub">Progress snapshots</h3>
+      <ul id="memory-snapshots" class="memory-snapshots"></ul>
     </section>
 
     <section class="card guide-card" id="start-guide">
@@ -82,6 +95,19 @@
       <h2>Your Stage</h2>
       <p class="stage-name" id="stage-name">—</p>
       <div class="progress-track"><div class="progress-fill" id="stage-progress"></div></div>
+      <div id="esbi-panel" class="esbi-panel hidden">
+        <div class="esbi-head">
+          <span class="esbi-badge" id="esbi-badge">S → B</span>
+          <a href="/static/learn.html" class="btn btn-secondary btn-sm">Lesson 14</a>
+        </div>
+        <div class="esbi-grid-wrap">
+          <p class="esbi-axis esbi-axis-left">Left — trade time</p>
+          <p class="esbi-axis esbi-axis-right">Right — systems &amp; capital</p>
+          <div id="esbi-grid" class="esbi-grid" aria-label="Cashflow quadrant income mix"></div>
+        </div>
+        <p id="esbi-primary" class="muted small"></p>
+        <p id="esbi-next" class="small"></p>
+      </div>
       <p id="next-action" class="next-action"></p>
     </section>
 

@@ -47,7 +47,7 @@ if __name__ == "__main__":
             agencies={agency_key: create_agency_factory},
             port=PORT,
             enable_logging=True,
-            allowed_local_file_dirs=["./uploads"],
+            allowed_local_file_dirs=["./uploads", "./mnt"],
             return_app=True,
         )
         register_mechanical_routes(app)
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     logger.info("  Ask Advisor:   %s/static/advisor.html", base)
     if not MECHANICAL_ONLY and AGENCY_MODE != "openswarm":
         logger.info("  Chat API:      %s/Architect_Blueprint/get_response", base)
+        logger.info("  Studio:        %s/static/studio.html", base)
     logger.info("=" * 60)
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)

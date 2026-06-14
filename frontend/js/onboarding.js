@@ -88,11 +88,59 @@ async function saveStep(n, body) {
   return res;
 }
 
+function syncQuadrantFromEmployment() {
+  const emp = document.getElementById("employment-type")?.value || "self_employed";
+  const quad = document.getElementById("cashflow-quadrant");
+  if (!quad) return;
+  const map = { self_employed: "S", business_owner: "B", side_hustle: "S" };
+  quad.value = map[emp] || "S";
+  const e = document.querySelector('[name="income_mix_e_pct"]');
+  const s = document.querySelector('[name="income_mix_s_pct"]');
+  const b = document.querySelector('[name="income_mix_b_pct"]');
+  const i = document.querySelector('[name="income_mix_i_pct"]');
+  if (!e || !s || !b || !i) return;
+  if (emp === "side_hustle") {
+    e.value = 60;
+    s.value = 40;
+    b.value = 0;
+    i.value = 0;
+  } else {
+    e.value = emp === "employee" ? 100 : 0;
+    s.value = quad.value === "S" ? 100 : 0;
+    b.value = quad.value === "B" ? 100 : 0;
+    i.value = quad.value === "I" ? 100 : 0;
+  }
+}
+
+document.getElementById("employment-type")?.addEventListener("change", syncQuadrantFromEmployment);
+document.getElementById("cashflow-quadrant")?.addEventListener("change", () => {
+  const emp = document.getElementById("employment-type")?.value;
+  if (emp === "side_hustle") return;
+  syncQuadrantFromEmployment();
+});
+
 async function collectAndSave(current) {
   if (current === 1) {
     const fd = formData(document.getElementById("form-1"));
     if (!fd.display_name?.trim()) throw new Error("Enter your name.");
-    await saveStep(1, fd);
+    const mixTotal =
+      Number(fd.income_mix_e_pct || 0) +
+      Number(fd.income_mix_s_pct || 0) +
+      Number(fd.income_mix_b_pct || 0) +
+      Number(fd.income_mix_i_pct || 0);
+    if (mixTotal > 0 && Math.abs(mixTotal - 100) > 2) {
+      throw new Error("Income mix percentages should sum to about 100%.");
+    }
+    await saveStep(1, {
+      display_name: fd.display_name.trim(),
+      primary_trade: fd.primary_trade || "",
+      employment_type: fd.employment_type,
+      cashflow_quadrant_primary: fd.cashflow_quadrant_primary || "S",
+      income_mix_e_pct: Number(fd.income_mix_e_pct || 0),
+      income_mix_s_pct: Number(fd.income_mix_s_pct || 0),
+      income_mix_b_pct: Number(fd.income_mix_b_pct || 0),
+      income_mix_i_pct: Number(fd.income_mix_i_pct || 0),
+    });
   } else if (current === 2) {
     const fd = formData(document.getElementById("form-2"));
     await saveStep(2, {
@@ -174,5 +222,6 @@ document.getElementById("btn-next").onclick = async () => {
     /* new user */
   }
   renderDebts();
+  syncQuadrantFromEmployment();
   showStep();
 })();

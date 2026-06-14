@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.database import get_db, init_db
-from backend.routers import dashboard, intake, mirror_interactions, reputation, user
+from backend.routers import dashboard, intake, memory, mirror_interactions, reputation, studio, user
 from backend.seed import seed_unlocks
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
@@ -22,17 +22,29 @@ def register_mechanical_routes(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(memory.router)
     app.include_router(reputation.router)
     app.include_router(dashboard.router)
     app.include_router(user.router)
     app.include_router(intake.router)
     app.include_router(mirror_interactions.router)
+    app.include_router(studio.router)
 
     from backend.services.literacy_content import get_modules
 
     @app.get("/literacy/modules", tags=["literacy"])
     def literacy_modules_public():
         return {"modules": get_modules()}
+
+    @app.get("/literacy/playbook", tags=["literacy"])
+    def literacy_playbook_public(category: str | None = None, tag: str | None = None):
+        from backend.services.wealth_playbook import PLAYBOOK_CATEGORIES, get_playbook
+
+        if category and category not in PLAYBOOK_CATEGORIES:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Invalid category")
+        return {"categories": list(PLAYBOOK_CATEGORIES), "entries": get_playbook(category=category, tag=tag)}
 
     @app.get("/", include_in_schema=False)
     def root():

@@ -6,6 +6,11 @@ from backend.models.reputation import (
     StrategyPersistence,
     UserSelfCommitment,
 )
+from backend.models.agent_memory import (
+    AdvisorChatThread,
+    ImprovementSnapshot,
+    UserMemoryFact,
+)
 from backend.models.user_profile import UserProfile
 
 __all__ = [
@@ -16,4 +21,7 @@ __all__ = [
     "ReputationUnlock",
     "RecalibrationAlert",
     "UserProfile",
+    "AdvisorChatThread",
+    "UserMemoryFact",
+    "ImprovementSnapshot",
 ]
