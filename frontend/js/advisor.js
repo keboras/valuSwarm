@@ -1,15 +1,46 @@
-import { fetchJson, requireOnboarding, renderNav } from "./app.js";
+import { fetchJson, requireOnboarding, renderNav, renderAdvisorEsbiContext, formatEsbiInstructions } from "./app.js";
 
 const AGENCY_PATH = "/Architect_Blueprint/get_response";
+const USER_ID = "default";
 const STARTERS = [
   "Build my debt payoff order",
   "How much should I set aside for taxes?",
   "Am I ready for a business line of credit?",
   "What's my next Stability-stage move?",
+  "How do I move from S to B in my business?",
+  "What does my ESBI income mix mean for my stage?",
 ];
 
 let financialSummary = null;
+let architectDossier = null;
 let chatHistory = [];
+
+function extractMessageText(msg) {
+  if (!msg || typeof msg !== "object") return null;
+  const role = msg.role;
+  if (role !== "user" && role !== "assistant") return null;
+  const content = msg.content;
+  if (typeof content === "string") return content.trim() || null;
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((part) => part?.text || part?.input_text || part?.output_text || "")
+      .filter(Boolean);
+    return parts.join("\n").trim() || null;
+  }
+  return null;
+}
+
+function renderStoredChat(messages) {
+  const log = document.getElementById("chat-log");
+  log.innerHTML = "";
+  for (const msg of messages) {
+    const text = extractMessageText(msg);
+    if (!text) continue;
+    appendMessage(msg.role === "user" ? "user" : "assistant", text, {
+      markdown: msg.role === "assistant",
+    });
+  }
+}
 
 function escapeHtml(text) {
   return text
@@ -113,9 +144,14 @@ async function sendMessage(text) {
   appendMessage("user", text);
   document.getElementById("chat-input").value = "";
 
+  const cq =
+    financialSummary?.cashflow_quadrant ||
+    architectDossier?.cashflow_quadrant ||
+    architectDossier?.financial_summary?.cashflow_quadrant;
+
   const contextBlock = financialSummary
-    ? `User financial profile (use these numbers):\n${JSON.stringify(financialSummary, null, 2)}`
-    : "No financial profile loaded.";
+    ? `User financial profile (use these numbers):\n${JSON.stringify(financialSummary, null, 2)}\n\n${formatEsbiInstructions(cq)}`
+    : formatEsbiInstructions(cq) || "No financial profile loaded.";
 
   const res = await fetch(AGENCY_PATH, {
     method: "POST",
@@ -124,7 +160,11 @@ async function sendMessage(text) {
       message: text,
       recipient_agent: "Architect Orchestrator",
       additional_instructions: contextBlock,
-      user_context: { financial_summary: financialSummary },
+      user_context: {
+        user_id: USER_ID,
+        financial_summary: financialSummary,
+        architect_dossier: architectDossier,
+      },
       chat_history: chatHistory.length ? chatHistory : null,
     }),
   });
@@ -138,7 +178,43 @@ async function sendMessage(text) {
   const data = await res.json();
   const reply = data.response || data.final_output || data.message || JSON.stringify(data);
   appendMessage("assistant", String(reply), { markdown: true });
-  if (data.chat_history) chatHistory = data.chat_history;
+  if (data.chat_history) {
+    chatHistory = data.chat_history;
+  } else if (Array.isArray(data.new_messages) && data.new_messages.length) {
+    chatHistory = [...chatHistory, ...data.new_messages];
+  }
+}
+
+async function loadMemory() {
+  try {
+    architectDossier = await fetchJson(`/user/memory/dossier?user_id=${USER_ID}`);
+    await fetchJson(`/user/memory/snapshots?user_id=${USER_ID}`, {
+      method: "POST",
+      body: JSON.stringify({ note: "Advisor session opened" }),
+    });
+  } catch {
+    architectDossier = null;
+  }
+
+  try {
+    const chat = await fetchJson(`/user/memory/chat?user_id=${USER_ID}`);
+    if (chat.messages?.length) {
+      chatHistory = chat.messages;
+      renderStoredChat(chatHistory);
+      return true;
+    }
+  } catch {
+    /* no saved chat */
+  }
+  return false;
+}
+
+async function clearMemory() {
+  if (!confirm("Clear advisor conversation history? Your intake profile and saved facts stay.")) return;
+  await fetchJson(`/user/memory/chat?user_id=${USER_ID}`, { method: "DELETE" });
+  chatHistory = [];
+  document.getElementById("chat-log").innerHTML = "";
+  appendMessage("assistant", "Conversation cleared. Your profile and remembered facts are still saved.");
 }
 
 document.getElementById("nav").innerHTML = renderNav("advisor");
@@ -152,15 +228,38 @@ requireOnboarding().then(async () => {
     statusEl.classList.remove("hidden");
   }
 
+  const hadStoredChat = await loadMemory();
+
   try {
     financialSummary = await fetchJson("/user/intake/summary");
-    appendMessage(
-      "assistant",
-      `Profile loaded for ${financialSummary.display_name}. Income ${financialSummary.monthly_gross_income}, debt total ${financialSummary.debt_total}. Ask anything.`
-    );
+    const cq =
+      financialSummary.cashflow_quadrant ||
+      architectDossier?.cashflow_quadrant ||
+      architectDossier?.financial_summary?.cashflow_quadrant;
+    renderAdvisorEsbiContext(cq);
+
+    if (!hadStoredChat) {
+      const name = architectDossier?.architect_identity?.display_name || financialSummary.display_name;
+      const stage = architectDossier?.journey?.stage || "Stability";
+      const factCount = architectDossier?.remembered_facts?.length || 0;
+      const esbiLine = cq
+        ? ` Cashflow quadrant: ${cq.badge} (${cq.primary_label} → ${cq.target_label}).`
+        : "";
+      appendMessage(
+        "assistant",
+        `Welcome back, ${name}. Stage: ${stage}.${esbiLine} Income ${financialSummary.monthly_gross_income}, debt total ${financialSummary.debt_total}.` +
+          (factCount ? ` I remember ${factCount} thing(s) from past conversations.` : "") +
+          " Ask anything — I'll remember what matters and coach your ESBI path when relevant.",
+        { markdown: false }
+      );
+    }
   } catch {
-    appendMessage("assistant", "Complete Financial Reality Intake first for personalized answers.");
+    if (!hadStoredChat) {
+      appendMessage("assistant", "Complete Financial Reality Intake first for personalized answers.");
+    }
   }
+
+  document.getElementById("clear-chat")?.addEventListener("click", clearMemory);
 
   const chips = document.getElementById("starter-chips");
   chips.innerHTML = STARTERS.map(

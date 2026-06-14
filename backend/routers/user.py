@@ -15,6 +15,7 @@ from backend.services.clinical_audit import derive_profile_from_audit, generate_
 from backend.services.journey_engine import STAGES, assess_stage
 from backend.services.financial_intake import build_financial_summary
 from backend.services.literacy_content import get_module, get_modules
+from backend.services.wealth_playbook import PLAYBOOK_CATEGORIES, get_playbook
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -127,6 +128,9 @@ def get_journey(user_id: str = Query(default="default"), db: Session = Depends(g
     journey["focus_season_active"] = profile.focus_season_active
     journey["stages_overview"] = list(STAGES)
     journey["onboarding_required"] = False
+    from backend.services.cashflow_quadrant import assess_from_profile
+
+    journey["cashflow_quadrant"] = assess_from_profile(profile, journey["stage"])
     return journey
 
 
@@ -136,6 +140,16 @@ def get_financial_summary(user_id: str = Query(default="default"), db: Session =
     if not profile.intake_completed_at and not profile.onboarding_completed:
         raise HTTPException(status_code=400, detail="Complete Financial Reality Intake first")
     return build_financial_summary(profile)
+
+
+@router.get("/literacy/playbook")
+def list_wealth_playbook(
+    category: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+):
+    if category and category not in PLAYBOOK_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"category must be one of: {PLAYBOOK_CATEGORIES}")
+    return {"categories": list(PLAYBOOK_CATEGORIES), "entries": get_playbook(category=category, tag=tag)}
 
 
 @router.get("/literacy/modules")

@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from backend.services.cashflow_quadrant import assess_from_profile
+from backend.services.journey_engine import assess_stage
+
 APR_THRESHOLD = 7.5
 
 
@@ -211,6 +214,15 @@ def build_financial_summary(profile) -> dict[str, Any]:
     data_source = profile.data_source or "manual"
     badge = "Your data" if data_source == "manual" else ("Demo data" if data_source == "demo" else data_source.title())
 
+    journey = assess_stage(
+        monthly_essentials=essentials,
+        stability_fund_balance=profile.stability_fund_balance or 0,
+        stability_fund_target_months=profile.stability_fund_target_months or 4,
+        revenue_per_hour=profile.revenue_per_hour or 0,
+        baseline_revenue_per_hour=profile.baseline_revenue_per_hour or 0,
+    )
+    cashflow_quadrant = assess_from_profile(profile, journey["stage"])
+
     return {
         "data_source": data_source,
         "data_source_badge": badge,
@@ -229,6 +241,7 @@ def build_financial_summary(profile) -> dict[str, Any]:
         "credit_plan": credit_plan,
         "business_budget": business,
         "profit_first": profit_first,
+        "cashflow_quadrant": cashflow_quadrant,
         "disclaimer": "Educational guidance only — not licensed tax, legal, or credit repair advice.",
     }
 
@@ -239,6 +252,20 @@ def apply_intake_to_profile(profile, step: int, payload: dict) -> None:
         profile.display_name = payload.get("display_name", profile.display_name)
         profile.primary_trade = payload.get("primary_trade", "")
         profile.employment_type = payload.get("employment_type", "self_employed")
+        primary = (payload.get("cashflow_quadrant_primary") or "S").upper()
+        if primary in ("E", "S", "B", "I"):
+            profile.cashflow_quadrant_primary = primary
+        mix = {
+            "E": float(payload.get("income_mix_e_pct", 0) or 0),
+            "S": float(payload.get("income_mix_s_pct", 0) or 0),
+            "B": float(payload.get("income_mix_b_pct", 0) or 0),
+            "I": float(payload.get("income_mix_i_pct", 0) or 0),
+        }
+        if sum(mix.values()) <= 0:
+            from backend.services.cashflow_quadrant import default_income_mix
+
+            mix = default_income_mix(profile.cashflow_quadrant_primary, profile.employment_type)
+        profile.cashflow_quadrant_json = json.dumps(mix)
     elif step == 2:
         profile.monthly_gross_income = float(payload["monthly_gross_income"])
         profile.monthly_essentials = float(payload["monthly_essentials"])

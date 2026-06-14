@@ -30,7 +30,7 @@ def get_db():
 
 
 def init_db():
-    from backend.models import fork_moment, reputation, user_profile  # noqa: F401
+    from backend.models import agent_memory, fork_moment, reputation, user_profile  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     _migrate_sqlite_columns()
@@ -56,6 +56,8 @@ def _migrate_sqlite_columns():
             ("debts_json", "TEXT DEFAULT '[]'"),
             ("credit_snapshot_json", "TEXT DEFAULT '{}'"),
             ("business_budget_json", "TEXT DEFAULT '{}'"),
+            ("cashflow_quadrant_primary", "VARCHAR(1) DEFAULT 'S'"),
+            ("cashflow_quadrant_json", "TEXT DEFAULT '{}'"),
         ],
     }
     with engine.connect() as conn:

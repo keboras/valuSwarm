@@ -19,6 +19,7 @@ def _configure_runtime() -> None:
 
     from dotenv import load_dotenv
     from agents import set_tracing_disabled, set_tracing_export_api_key
+    from patches.patch_agent_memory import apply_agent_memory_patch
     from patches.patch_agency_swarm_dual_comms import apply_dual_comms_patch
     from patches.patch_file_attachment_refs import apply_file_attachment_reference_patch
     from patches.patch_ipython_interpreter_composio import apply_ipython_composio_context_patch
@@ -30,6 +31,7 @@ def _configure_runtime() -> None:
     apply_dual_comms_patch()
     apply_file_attachment_reference_patch()
     apply_ipython_composio_context_patch()
+    apply_agent_memory_patch()
 
     _tracing_key = os.getenv("OPENAI_API_KEY")
     if _tracing_key:
@@ -58,15 +60,21 @@ def create_agency(load_threads_callback=None):
     from behavioral_mirror import create_behavioral_mirror
     from cash_flow_engineer import create_cash_flow_engineer
     from discipline_controller import create_discipline_controller
+    from docs_agent import create_docs_agent
     from financial_analyst import create_financial_analyst
+    from image_generation_agent import create_image_generation_agent
     from legacy_architect import create_legacy_architect
     from leverage_strategist import create_leverage_strategist
     from opportunity_scanner import create_opportunity_scanner
     from reputation_validator import create_reputation_validator
+    from slides_agent import create_slides_agent
+    from studio_orchestrator import create_studio_orchestrator
     from tax_strategist import create_tax_strategist
+    from video_generation_agent import create_video_generation_agent
     from wealth_architect import create_wealth_architect
 
     orchestrator = create_architect_orchestrator()
+    studio_orchestrator = create_studio_orchestrator()
     behavioral_mirror = create_behavioral_mirror()
     cash_flow_engineer = create_cash_flow_engineer()
     opportunity_scanner = create_opportunity_scanner()
@@ -78,6 +86,10 @@ def create_agency(load_threads_callback=None):
     discipline_controller = create_discipline_controller()
     arbitrage_scout = create_arbitrage_scout()
     wealth_architect = create_wealth_architect()
+    docs_agent = create_docs_agent()
+    slides_agent = create_slides_agent()
+    image_agent = create_image_generation_agent()
+    video_agent = create_video_generation_agent()
 
     core_six = [
         behavioral_mirror,
@@ -87,19 +99,29 @@ def create_agency(load_threads_callback=None):
         reputation_validator,
         legacy_architect,
     ]
-    specialists = core_six + [
+    wealth_specialists = [
         financial_analyst,
         tax_strategist,
         discipline_controller,
         arbitrage_scout,
         wealth_architect,
     ]
+    content_specialists = [
+        docs_agent,
+        slides_agent,
+        image_agent,
+        video_agent,
+    ]
+    specialists = core_six + wealth_specialists + content_specialists
+    entry_agents = [orchestrator, studio_orchestrator]
 
     send_message_flows = [
-        (orchestrator, specialist, SendMessage) for specialist in specialists
+        (entry, specialist, SendMessage)
+        for entry in entry_agents
+        for specialist in specialists
     ]
 
-    all_agents = [orchestrator] + specialists
+    all_agents = entry_agents + specialists
     handoff_flows = [
         (a > b, Handoff)
         for a in all_agents
@@ -109,6 +131,7 @@ def create_agency(load_threads_callback=None):
 
     agency = Agency(
         orchestrator,
+        studio_orchestrator,
         *specialists,
         communication_flows=send_message_flows + handoff_flows,
         name="Architect Blueprint",

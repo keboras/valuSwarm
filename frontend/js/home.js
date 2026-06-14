@@ -1,4 +1,4 @@
-import { fetchJson, requireOnboarding, renderNav, formatMoney, dataSourceBadge } from "./app.js";
+import { fetchJson, requireOnboarding, renderNav, formatMoney, dataSourceBadge, renderEsbiPanel } from "./app.js";
 
 let pendingPauseId = null;
 
@@ -15,7 +15,7 @@ function renderStartGuide(profile, journey, selfTrust) {
     },
     {
       done: lessonDone,
-      html: 'Open <a href="/static/learn.html">Learn</a> and finish lesson 1 (15/65/20 cash flow machine).',
+      html: 'Open <a href="/static/learn.html">Learn</a> — complete lesson 1 (objectives + exercise checklist, not just a phrase).',
     },
     {
       done: hasCommitment,
@@ -43,7 +43,7 @@ function renderStartGuide(profile, journey, selfTrust) {
 function renderFinancialReality(summary) {
   document.getElementById("data-badge").innerHTML = dataSourceBadge(summary.data_source);
   document.getElementById("reality-grid").innerHTML = `
-    <div><span class="label">Income</span><strong>${formatMoney(summary.monthly_gross_income)}</strong></div>
+    <div><span class="label">Business revenue</span><strong>${formatMoney(summary.monthly_gross_income)}</strong></div>
     <div><span class="label">Essentials</span><strong>${formatMoney(summary.monthly_essentials)}</strong></div>
     <div><span class="label">Debt total</span><strong>${formatMoney(summary.debt_total)}</strong></div>
     <div><span class="label">Stability Fund</span><strong>${summary.stability_fund.pct_of_target}%</strong></div>
@@ -65,6 +65,96 @@ function renderQuickWins(data) {
         `<li class="${o.gated ? "muted" : ""}"><strong>${o.title}</strong>${o.gated ? " (locked)" : ""} — ${o.action}</li>`
     )
     .join("");
+}
+
+function formatMemoryDate(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+async function renderMemoryPanel() {
+  const factsEl = document.getElementById("memory-facts");
+  const emptyEl = document.getElementById("memory-empty");
+  const summaryEl = document.getElementById("memory-summary");
+  const snapshotsEl = document.getElementById("memory-snapshots");
+
+  let dossier;
+  let factsData;
+  let chatData;
+  let snapshotsData;
+
+  try {
+    [dossier, factsData, chatData, snapshotsData] = await Promise.all([
+      fetchJson("/user/memory/dossier"),
+      fetchJson("/user/memory/facts"),
+      fetchJson("/user/memory/chat").catch(() => ({ count: 0 })),
+      fetchJson("/user/memory/snapshots").catch(() => ({ snapshots: [] })),
+    ]);
+  } catch {
+    summaryEl.innerHTML = `<p class="muted small">Memory loads when the full server is running (<code>python server.py</code>).</p>`;
+    factsEl.innerHTML = "";
+    snapshotsEl.innerHTML = "";
+    emptyEl.classList.add("hidden");
+    return;
+  }
+
+  const identity = dossier.architect_identity || {};
+  const journey = dossier.journey || {};
+  const cq = dossier.financial_summary?.cashflow_quadrant || journey.cashflow_quadrant;
+  const facts = factsData.facts || [];
+  const snapshots = snapshotsData.snapshots || [];
+
+  summaryEl.innerHTML = `
+    <div><span class="label">Architect</span><strong>${identity.display_name || "You"}</strong></div>
+    <div><span class="label">Stage</span><strong>${journey.stage || "—"}</strong></div>
+    ${cq ? `<div><span class="label">Cashflow quadrant</span><strong>${cq.badge || "—"}</strong></div>` : ""}
+    <div><span class="label">Saved facts</span><strong>${facts.length}</strong></div>
+    <div><span class="label">Chat messages</span><strong>${chatData.count ?? 0}</strong></div>`;
+
+  if (!facts.length) {
+    factsEl.innerHTML = "";
+    emptyEl.classList.remove("hidden");
+  } else {
+    emptyEl.classList.add("hidden");
+    factsEl.innerHTML = facts
+      .map(
+        (f) => `
+      <li>
+        <div class="memory-fact-body">
+          <span class="memory-tag">${f.category || "general"}</span>
+          ${f.content}
+          <span class="small muted"> · ${formatMemoryDate(f.created_at)}${f.source_agent ? ` · ${f.source_agent}` : ""}</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm memory-forget" data-id="${f.id}">Forget</button>
+      </li>`
+      )
+      .join("");
+
+    factsEl.querySelectorAll(".memory-forget").forEach((btn) => {
+      btn.onclick = async () => {
+        if (!confirm("Remove this remembered fact?")) return;
+        await fetchJson(`/user/memory/facts/${btn.dataset.id}`, { method: "DELETE" });
+        await renderMemoryPanel();
+      };
+    });
+  }
+
+  if (!snapshots.length) {
+    snapshotsEl.innerHTML = `<li class="muted">No progress snapshots yet — open Ask Advisor to start tracking.</li>`;
+  } else {
+    snapshotsEl.innerHTML = snapshots
+      .slice(0, 5)
+      .map((s) => {
+        const fund = s.metrics?.stability_fund_pct;
+        const fundTxt = fund != null ? `${fund}% Stability Fund` : "";
+        return `<li><strong>${s.stage}</strong> — ${formatMemoryDate(s.created_at)}${fundTxt ? ` · ${fundTxt}` : ""}${s.note ? `<br /><span class="small">${s.note}</span>` : ""}</li>`;
+      })
+      .join("");
+  }
 }
 
 document.getElementById("nav").innerHTML = renderNav("home");
@@ -189,12 +279,15 @@ requireOnboarding().then(async (profile) => {
     document.getElementById("stage-name").textContent = journey.stage;
     document.getElementById("stage-progress").style.width = `${(journey.stage_index / journey.total_stages) * 100}%`;
     document.getElementById("next-action").textContent = journey.next_mechanical_action;
+    renderEsbiPanel(journey.cashflow_quadrant);
 
     const selfTrust = await fetchJson("/reputation/self-trust");
     renderStartGuide(profile, journey, selfTrust);
 
     const quickWins = await fetchJson("/user/intake/quick-wins");
     renderQuickWins(quickWins);
+
+    await renderMemoryPanel();
 
     await loadForkMoments();
 

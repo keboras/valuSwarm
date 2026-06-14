@@ -22,20 +22,42 @@
         <label>Your name <input name="display_name" required placeholder="Alex" /></label>
         <label>Trade / skill <input name="primary_trade" placeholder="Web design, HVAC, consulting…" /></label>
         <label>Work type
-          <select name="employment_type">
+          <select name="employment_type" id="employment-type">
             <option value="self_employed">Self-employed / freelancer</option>
             <option value="business_owner">Business owner</option>
             <option value="side_hustle">Side hustle + W-2</option>
           </select>
         </label>
+        <label>Primary income quadrant (ESBI)
+          <select name="cashflow_quadrant_primary" id="cashflow-quadrant">
+            <option value="E">E — Employee (paycheck)</option>
+            <option value="S" selected>S — Self-employed (you are the business)</option>
+            <option value="B">B — Business owner (system runs without you daily)</option>
+            <option value="I">I — Investor (assets pay you)</option>
+          </select>
+        </label>
+        <p class="muted small">Inspired by Rich Dad Cashflow Quadrant — not affiliated with Rich Dad Company.</p>
+        <details class="income-mix-details">
+          <summary class="small">Optional: income mix by quadrant (%)</summary>
+          <div class="income-mix-grid">
+            <label>E % <input name="income_mix_e_pct" type="number" min="0" max="100" value="0" /></label>
+            <label>S % <input name="income_mix_s_pct" type="number" min="0" max="100" value="100" /></label>
+            <label>B % <input name="income_mix_b_pct" type="number" min="0" max="100" value="0" /></label>
+            <label>I % <input name="income_mix_i_pct" type="number" min="0" max="100" value="0" /></label>
+          </div>
+          <p class="muted small">Rough estimate is fine — should sum to ~100%.</p>
+        </details>
       </form>
     </section>
 
     <section id="step-2" class="step card hidden">
-      <h2>Step 2 — Cash flow</h2>
+      <h2>Step 2 — Business & personal cash flow</h2>
       <form id="form-2">
-        <label>Monthly gross income ($) <input name="monthly_gross_income" type="number" min="1" step="0.01" required /></label>
-        <label>Monthly essentials ($) — rent, food, insurance, minimum debt payments
+        <label>Monthly gross business revenue ($)
+          <input name="monthly_gross_income" type="number" min="1" step="0.01" required />
+        </label>
+        <p class="muted small">What hits your business account before tax — not W-2 net pay (use Step 5 if you also have a job).</p>
+        <label>Monthly personal essentials ($) — housing, food, insurance, minimum debt payments, core business costs you pay personally
           <input name="monthly_essentials" type="number" min="1" step="0.01" required />
         </label>
         <label>Stability Fund balance today ($) <input name="stability_fund_balance" type="number" min="0" step="0.01" value="0" /></label>
@@ -77,8 +99,8 @@
     </section>
 
     <section id="step-5" class="step card hidden">
-      <h2>Step 5 — Business budget</h2>
-      <p class="muted small">Profit First style — percentages must sum to 100%.</p>
+      <h2>Step 5 — Business budget (Profit First)</h2>
+      <p class="muted small">Split every client deposit before it disappears — percentages must sum to 100%. Owner Pay becomes your personal 15/65/20 input.</p>
       <form id="form-5">
         <label>Business type <input name="business_type" placeholder="LLC consulting, sole prop…" /></label>
         <label>Monthly business revenue ($) <input name="monthly_revenue" type="number" min="0" step="0.01" /></label>
