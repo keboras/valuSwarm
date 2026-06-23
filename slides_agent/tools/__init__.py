@@ -26,7 +26,6 @@ from .CreateImageMontage import CreateImageMontage
 from .DownloadImage import DownloadImage
 from .ImageSearch import ImageSearch
 from .GenerateImage import GenerateImage
-from shared_tools.WebSearch import WebSearch
 
 __all__ = [
     # Slide management
@@ -52,5 +51,4 @@ __all__ = [
     "DownloadImage",
     "ImageSearch",
     "GenerateImage",
-    "WebSearch",
 ]

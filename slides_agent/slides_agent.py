@@ -1,10 +1,10 @@
-from agency_swarm import ModelSettings
-from agency_swarm.tools import IPythonInterpreter, PersistentShellTool, LoadFileAttachment
+from agency_swarm import Agent, ModelSettings
+from agency_swarm.tools import IPythonInterpreter, PersistentShellTool, LoadFileAttachment, WebSearchTool
 from datetime import datetime, timezone
 from openai.types.shared import Reasoning
 from pathlib import Path
 from virtual_assistant.tools.ReadFile import ReadFile
-from shared_tools import CopyFile, HostedToolAgent, WebSearch
+from shared_tools import CopyFile
 
 from config import get_default_model, is_openai_provider
 
@@ -50,8 +50,8 @@ def _build_instructions() -> str:
     )
 
 
-def create_slides_agent() -> HostedToolAgent:
-    return HostedToolAgent(
+def create_slides_agent() -> Agent:
+    return Agent(
         name="Slides Agent",
         description="PowerPoint presentation specialist for creating, editing, and analyzing .pptx files",
         instructions=_build_instructions(),
@@ -78,13 +78,13 @@ def create_slides_agent() -> HostedToolAgent:
             # RearrangePptxSlidesFromTemplate,
             # ApplyPptxTextReplacements,
             ImageSearch,
-            WebSearch,
             # Utility tools
             IPythonInterpreter,
             PersistentShellTool,
             LoadFileAttachment,
             CopyFile,
             ReadFile,
+            WebSearchTool(search_context_size="high"),
         ],
         model=get_default_model(),
         model_settings=ModelSettings(
@@ -103,4 +103,5 @@ def create_slides_agent() -> HostedToolAgent:
 
 if __name__ == "__main__":
     from agency_swarm import Agency
+
     Agency(create_slides_agent()).terminal_demo(reload=False)
