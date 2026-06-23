@@ -92,6 +92,25 @@ class _CodexResponsesModel:
         return cls._get_cls()(model=model, openai_client=openai_client)
 
 
+def _register_sub_agent_usage(tool, agent_model, result) -> None:
+    """Push sub-agent raw API responses into the master context for UI cost tracking."""
+    try:
+        from agency_swarm.utils.model_utils import get_usage_tracking_model_name
+        raw_responses = getattr(result, "raw_responses", None) or []
+        if not raw_responses:
+            return
+        ctx = getattr(tool, "_context", None)
+        master = getattr(ctx, "context", None)
+        registry = getattr(master, "_sub_agent_raw_responses", None)
+        if registry is None:
+            return
+        model_name = get_usage_tracking_model_name(agent_model)
+        for resp in raw_responses:
+            registry.append((model_name, resp))
+    except Exception:
+        pass
+
+
 async def _agent_get_response(agent: Agent, prompt: str, *, use_stream: bool = False):
     """Call agent.get_response or stream-based equivalent.
 
@@ -115,8 +134,11 @@ async def _agent_get_response(agent: Agent, prompt: str, *, use_stream: bool = F
             return result
 
         assembled = "".join(text_deltas)
+        _raw = getattr(result, "raw_responses", []) or []
+
         class _R:
             final_output = assembled
+            raw_responses = _raw
 
         return _R()
     return await agent.get_response(prompt)
@@ -451,6 +473,7 @@ class InsertNewSlides(BaseTool):
             plan_result = _run_awaitable(
                 _agent_get_response(planner, prompt, use_stream=is_codex)
             )
+            _register_sub_agent_usage(self, planner.model, plan_result)
         except Exception as exc:
             return f"❌ Outline generation failed: {exc}"
         plan_output = getattr(plan_result, "final_output", None)
