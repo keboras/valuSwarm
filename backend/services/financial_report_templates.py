@@ -85,6 +85,99 @@ def _section(title: str, lines: list[str]) -> str:
     return f"## {title}\n\n{body}\n"
 
 
+def _markdown_income_breakdown(summary: dict[str, Any]) -> list[str]:
+    income = summary.get("income_breakdown") or {}
+    streams = income.get("streams") or []
+    if not streams:
+        return [
+            f"- Total monthly income: **{_money(summary.get('monthly_gross_income'))}** (single headline — add streams in intake Step 2 for detail)"
+        ]
+    lines = [f"- **Total monthly income: {_money(income.get('total_monthly') or summary.get('monthly_gross_income'))}**"]
+    for s in streams:
+        stype = (s.get("source_type") or "other").replace("_", " ")
+        lines.append(f"- {s.get('name', 'Income')} ({stype}): **{_money(s.get('amount_monthly'))}**/mo")
+        if s.get("notes"):
+            lines.append(f"  - _{s['notes']}_")
+    return lines
+
+
+def _markdown_expense_breakdown(summary: dict[str, Any]) -> list[str]:
+    expense = summary.get("expense_breakdown") or {}
+    labeled = expense.get("by_category_labeled") or {}
+    bills = expense.get("bills") or []
+    if not labeled and not bills:
+        return [f"- Total monthly essentials: **{_money(summary.get('monthly_essentials'))}**"]
+    lines = [f"- **Total monthly essentials: {_money(expense.get('total_monthly') or summary.get('monthly_essentials'))}**"]
+    for label, amount in labeled.items():
+        lines.append(f"- {label}: **{_money(amount)}**")
+    if bills:
+        lines.append(f"- Recurring bills subtotal: **{_money(expense.get('bills_total'))}**")
+        for b in bills:
+            due = f", due day {b['due_day']}" if b.get("due_day") else ""
+            autopay = " · autopay" if b.get("autopay") else ""
+            lines.append(f"  - {b.get('name', 'Bill')}: **{_money(b.get('amount_monthly'))}**/mo{due}{autopay}")
+    return lines
+
+
+def _markdown_credit_detail(summary: dict[str, Any]) -> list[str]:
+    credit = summary.get("credit_plan") or {}
+    snap = summary.get("credit_snapshot") or {}
+    items = credit.get("collections_items") or snap.get("collections_items") or []
+    lines = [
+        f"- Score band: **{credit.get('score_band', snap.get('score_band', 'unknown'))}**",
+        f"- Estimated score: **{snap.get('estimated_score') or credit.get('estimated_score_midpoint', '—')}**",
+        f"- Utilization: **{_pct(credit.get('utilization_pct', snap.get('utilization_pct')))}**",
+        f"- Total credit limits: **{_money(snap.get('total_credit_limit'))}**",
+        f"- Revolving balances: **{_money(snap.get('total_revolver_balance'))}**",
+        f"- Loan readiness: **{credit.get('loan_readiness_score', '—')}/100**",
+    ]
+    if credit.get("collections_balance") or items:
+        lines.append(
+            f"- Collections: **{_money(credit.get('collections_balance'))}** "
+            f"({credit.get('collections_count') or len(items)} account(s))"
+        )
+    charge_offs = credit.get("charge_offs") or snap.get("charge_offs") or 0
+    bankruptcies = credit.get("bankruptcies") or snap.get("bankruptcies") or 0
+    inquiries = credit.get("inquiries_6mo") or snap.get("inquiries_6mo") or 0
+    if charge_offs:
+        lines.append(f"- Charge-offs: **{charge_offs}**")
+    if bankruptcies:
+        lines.append(f"- Bankruptcies: **{bankruptcies}**")
+    if inquiries:
+        lines.append(f"- Hard inquiries (6 mo): **{inquiries}**")
+    if credit.get("late_payments_12mo") or snap.get("late_payments_12mo"):
+        lines.append("- Late payments in last 12 months: **Yes**")
+    for item in items:
+        lines.append(
+            f"  - {item.get('creditor', 'Collection')}: **{_money(item.get('balance'))}** ({item.get('status', 'open')})"
+        )
+    for flag in credit.get("flags") or []:
+        lines.append(f"- ⚠ {flag}")
+    for action in credit.get("weekly_actions") or []:
+        lines.append(f"- Action: {action}")
+    return lines
+
+
+def _markdown_debt_lines(debts: list[dict]) -> list[str]:
+    if not debts:
+        return ["- No debts on file."]
+    lines = []
+    for d in debts:
+        extra = []
+        if d.get("debt_type"):
+            extra.append(d["debt_type"].replace("_", " "))
+        if d.get("in_collections"):
+            extra.append("in collections")
+        if float(d.get("past_due_amount") or 0) > 0:
+            extra.append(f"past due {_money(d['past_due_amount'])}")
+        suffix = f" ({', '.join(extra)})" if extra else ""
+        lines.append(
+            f"- **{d.get('name', 'Debt')}**: {_money(d.get('balance'))} @ {_pct(d.get('apr'))} APR "
+            f"(min {_money(d.get('minimum_payment'))}){suffix}"
+        )
+    return lines
+
+
 def _markdown_snapshot(
     name: str,
     trade: str,
@@ -95,7 +188,6 @@ def _markdown_snapshot(
 ) -> str:
     alloc = summary.get("allocation_156520") or {}
     stability = summary.get("stability_fund") or {}
-    credit = summary.get("credit_plan") or {}
     cq = summary.get("cashflow_quadrant") or {}
 
     lines = [
@@ -107,11 +199,11 @@ def _markdown_snapshot(
         _section(
             "Income & essentials",
             [
-                f"- Monthly gross business revenue: **{_money(summary.get('monthly_gross_income'))}**",
-                f"- Monthly personal essentials: **{_money(summary.get('monthly_essentials'))}**",
-                f"- Monthly gap (revenue − essentials): **{_money((summary.get('monthly_gross_income') or 0) - (summary.get('monthly_essentials') or 0))}**",
+                *_markdown_income_breakdown(summary),
+                f"- Monthly gap (income − essentials): **{_money((summary.get('monthly_gross_income') or 0) - (summary.get('monthly_essentials') or 0))}**",
             ],
         ).strip(),
+        _section("Expense breakdown", _markdown_expense_breakdown(summary)).strip(),
         _section(
             "15 / 65 / 20 allocation (target)",
             [
@@ -134,8 +226,7 @@ def _markdown_snapshot(
             [
                 f"- Total debt: **{_money(summary.get('debt_total'))}**",
                 f"- Snowball focus: **{summary.get('debt_snowball', {}).get('primary_target') or 'None on file'}**",
-                f"- Credit band: **{credit.get('score_band', 'unknown')}**",
-                f"- Loan readiness score: **{credit.get('loan_readiness_score', '—')}/100**",
+                *_markdown_credit_detail(summary),
             ],
         ).strip(),
         _section(
@@ -160,14 +251,7 @@ def _markdown_debt_plan(
 ) -> str:
     snowball = summary.get("debt_snowball") or {}
     debts = summary.get("debts") or []
-    debt_lines = []
-    for d in debts:
-        debt_lines.append(
-            f"- **{d.get('name', 'Debt')}**: {_money(d.get('balance'))} @ {_pct(d.get('apr'))} APR "
-            f"(min payment {_money(d.get('minimum_payment'))})"
-        )
-    if not debt_lines:
-        debt_lines.append("- No debts on file.")
+    debt_lines = _markdown_debt_lines(debts)
 
     plan_lines = []
     for step in snowball.get("snowball_plan") or []:
@@ -196,6 +280,7 @@ def _markdown_debt_plan(
             ]).strip(),
             _section("Debts on file", debt_lines).strip(),
             _section("Recommended payoff order", plan_lines).strip(),
+            _section("Credit & collections", _markdown_credit_detail(summary)).strip(),
             _section("Actions this week", action_lines).strip(),
             f"---\n\n*{disclaimer}*",
         ]
@@ -236,8 +321,8 @@ def _markdown_cash_flow(
             _section(
                 "Monthly picture",
                 [
-                    f"- Gross business revenue: **{_money(revenue)}**",
-                    f"- Personal essentials: **{_money(essentials)}**",
+                    *_markdown_income_breakdown(summary),
+                    *_markdown_expense_breakdown(summary),
                     f"- Surplus before allocation: **{_money(revenue - essentials)}**",
                 ],
             ).strip(),
@@ -273,7 +358,6 @@ def _markdown_architect_status(
 ) -> str:
     cq = summary.get("cashflow_quadrant") or {}
     mix = cq.get("income_mix_pct") or {}
-    credit = summary.get("credit_plan") or {}
     stability = summary.get("stability_fund") or {}
 
     return "\n\n".join(
@@ -288,11 +372,13 @@ def _markdown_architect_status(
                 [
                     f"- **Stage:** {journey.get('stage', 'Stability')} ({journey.get('stage_index', 1)}/{journey.get('total_stages', 5)})",
                     f"- **Next mechanical action:** {journey.get('next_mechanical_action', 'Fund Stability Fund.')}",
-                    f"- **Monthly revenue:** {_money(summary.get('monthly_gross_income'))} | **Essentials:** {_money(summary.get('monthly_essentials'))}",
+                    f"- **Monthly income:** {_money(summary.get('monthly_gross_income'))} | **Essentials:** {_money(summary.get('monthly_essentials'))}",
                     f"- **Stability Fund:** {_pct(stability.get('pct_of_target'))} of target",
                     f"- **Total debt:** {_money(summary.get('debt_total'))}",
                 ],
             ).strip(),
+            _section("Income detail", _markdown_income_breakdown(summary)).strip(),
+            _section("Expense detail", _markdown_expense_breakdown(summary)).strip(),
             _section(
                 "Cashflow Quadrant (ESBI)",
                 [
@@ -305,11 +391,7 @@ def _markdown_architect_status(
             ).strip(),
             _section(
                 "Credit & readiness",
-                [
-                    f"- Score band: **{credit.get('score_band', 'unknown')}**",
-                    f"- Utilization: **{_pct(credit.get('utilization_pct'))}**",
-                    f"- Loan readiness: **{credit.get('loan_readiness_score', '—')}/100**",
-                ],
+                _markdown_credit_detail(summary),
             ).strip(),
             _section(
                 "30-day priorities",
