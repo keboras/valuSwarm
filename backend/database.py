@@ -58,6 +58,9 @@ def _migrate_sqlite_columns():
             ("business_budget_json", "TEXT DEFAULT '{}'"),
             ("cashflow_quadrant_primary", "VARCHAR(1) DEFAULT 'S'"),
             ("cashflow_quadrant_json", "TEXT DEFAULT '{}'"),
+            ("income_streams_json", "TEXT DEFAULT '[]'"),
+            ("expenses_json", "TEXT DEFAULT '{}'"),
+            ("bills_json", "TEXT DEFAULT '[]'"),
         ],
     }
     with engine.connect() as conn:

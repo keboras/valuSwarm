@@ -9,16 +9,19 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user_profile import UserProfile
 from backend.schemas.user import (
+    IntakeComplete,
     IntakeStep1,
     IntakeStep2,
     IntakeStep3,
     IntakeStep4,
     IntakeStep5,
     IntakeStep6,
-    IntakeComplete,
+    IntakeStep7,
+    IntakeStep8,
 )
 from backend.services.clinical_audit import generate_clinical_audit
 from backend.services.financial_intake import apply_intake_to_profile, build_financial_summary
+from backend.services.financial_profile import serialize_intake_data
 from backend.services.journey_engine import assess_stage
 from backend.services.quick_wins import build_quick_wins
 
@@ -31,6 +34,8 @@ STEP_SCHEMAS = {
     4: IntakeStep4,
     5: IntakeStep5,
     6: IntakeStep6,
+    7: IntakeStep7,
+    8: IntakeStep8,
 }
 
 
@@ -44,6 +49,73 @@ def _get_or_create(db: Session, user_id: str) -> UserProfile:
     return profile
 
 
+def _apply_legacy_step(profile: UserProfile, step: int, body: dict) -> None:
+    """Map old 6-step intake payloads to expanded steps."""
+    if step == 2 and "monthly_essentials" in body:
+        apply_intake_to_profile(
+            profile,
+            2,
+            {
+                "income_streams": [
+                    {
+                        "name": "Primary income",
+                        "source_type": "business",
+                        "amount_monthly": float(body["monthly_gross_income"]),
+                        "frequency": "monthly",
+                        "notes": "",
+                    }
+                ],
+                "monthly_gross_income": float(body["monthly_gross_income"]),
+            },
+        )
+        apply_intake_to_profile(
+            profile,
+            3,
+            {"monthly_essentials": float(body["monthly_essentials"])},
+        )
+        apply_intake_to_profile(
+            profile,
+            4,
+            {
+                "bills": [],
+                "stability_fund_balance": float(body.get("stability_fund_balance", 0)),
+                "stability_fund_target_months": int(body.get("stability_fund_target_months", 4)),
+            },
+        )
+        profile.monthly_essentials = float(body["monthly_essentials"])
+        profile.intake_step = max(profile.intake_step or 0, 4)
+        return
+    if step == 3:
+        apply_intake_to_profile(profile, 5, body)
+        return
+    if step == 4:
+        apply_intake_to_profile(profile, 6, body)
+        return
+    if step == 5:
+        apply_intake_to_profile(profile, 7, body)
+        return
+    if step == 6:
+        apply_intake_to_profile(profile, 8, body)
+        return
+    raise HTTPException(status_code=400, detail="Unknown legacy intake step")
+
+
+def _is_legacy_payload(step: int, body: dict) -> bool:
+    if step == 2 and "monthly_essentials" in body and "income_streams" not in body:
+        return True
+    if step in (3, 4, 5, 6) and step <= 6:
+        # Old step 3 was debts — if only debts key and step is 3
+        if step == 3 and "debts" in body and "housing" not in body:
+            return True
+        if step == 4 and "score_band" in body:
+            return True
+        if step == 5 and "profit_pct" in body:
+            return True
+        if step == 6 and "footprints" in body:
+            return True
+    return False
+
+
 @router.get("/status")
 def intake_status(user_id: str = Query(default="default"), db: Session = Depends(get_db)):
     profile = _get_or_create(db, user_id)
@@ -53,6 +125,12 @@ def intake_status(user_id: str = Query(default="default"), db: Session = Depends
         "onboarding_completed": profile.onboarding_completed,
         "data_source": profile.data_source or "none",
     }
+
+
+@router.get("/data")
+def intake_data(user_id: str = Query(default="default"), db: Session = Depends(get_db)):
+    profile = _get_or_create(db, user_id)
+    return serialize_intake_data(profile)
 
 
 @router.get("/summary")
@@ -70,12 +148,18 @@ def save_intake_step(
     user_id: str = Query(default="default"),
     db: Session = Depends(get_db),
 ):
-    if step not in STEP_SCHEMAS:
+    if step not in STEP_SCHEMAS and not (2 <= step <= 6 and _is_legacy_payload(step, body)):
         raise HTTPException(status_code=404, detail="Invalid intake step")
-    schema = STEP_SCHEMAS[step]
-    validated = schema.model_validate(body)
+
     profile = _get_or_create(db, user_id)
-    apply_intake_to_profile(profile, step, validated.model_dump())
+
+    if _is_legacy_payload(step, body):
+        _apply_legacy_step(profile, step, body)
+    else:
+        schema = STEP_SCHEMAS[step]
+        validated = schema.model_validate(body)
+        apply_intake_to_profile(profile, step, validated.model_dump())
+
     db.commit()
     db.refresh(profile)
 
@@ -95,14 +179,14 @@ def complete_intake(
     db: Session = Depends(get_db),
 ):
     profile = _get_or_create(db, user_id)
-    if (profile.intake_step or 0) < 5:
-        raise HTTPException(status_code=400, detail="Complete steps 1–5 before signing the contract")
+    if (profile.intake_step or 0) < 7:
+        raise HTTPException(status_code=400, detail="Complete steps 1–7 before signing the contract")
 
     profile.intake_completed_at = datetime.now(timezone.utc)
     profile.contract_signed_at = datetime.now(timezone.utc)
     profile.onboarding_completed = True
     profile.focus_season_active = True
-    profile.intake_step = 7
+    profile.intake_step = 9
     if not profile.data_source or profile.data_source == "none":
         profile.data_source = "manual"
 

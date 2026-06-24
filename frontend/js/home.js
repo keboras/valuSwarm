@@ -40,15 +40,58 @@ function renderStartGuide(profile, journey, selfTrust) {
     .join("");
 }
 
+function renderBreakdownList(items, labelKey, amountKey) {
+  if (!items?.length) return "";
+  return `<ul class="breakdown-list">${items
+    .map(
+      (x) =>
+        `<li><span>${x[labelKey]}</span><strong>${formatMoney(x[amountKey])}</strong></li>`
+    )
+    .join("")}</ul>`;
+}
+
 function renderFinancialReality(summary) {
   document.getElementById("data-badge").innerHTML = dataSourceBadge(summary.data_source);
+  const income = summary.income_breakdown;
+  const expense = summary.expense_breakdown;
+  const incomeDetail = income?.streams?.length
+    ? renderBreakdownList(
+        income.streams.map((s) => ({ label: `${s.name} (${s.source_type})`, amount: s.amount_monthly })),
+        "label",
+        "amount"
+      )
+    : "";
+  const expenseCats = expense?.by_category_labeled
+    ? renderBreakdownList(
+        Object.entries(expense.by_category_labeled).map(([label, amount]) => ({ label, amount })),
+        "label",
+        "amount"
+      )
+    : "";
+  const billsDetail = expense?.bills?.length
+    ? renderBreakdownList(expense.bills, "name", "amount_monthly")
+    : "";
+
   document.getElementById("reality-grid").innerHTML = `
-    <div><span class="label">Business revenue</span><strong>${formatMoney(summary.monthly_gross_income)}</strong></div>
-    <div><span class="label">Essentials</span><strong>${formatMoney(summary.monthly_essentials)}</strong></div>
+    <div><span class="label">Monthly income</span><strong>${formatMoney(summary.monthly_gross_income)}</strong></div>
+    <div><span class="label">Monthly essentials</span><strong>${formatMoney(summary.monthly_essentials)}</strong></div>
     <div><span class="label">Debt total</span><strong>${formatMoney(summary.debt_total)}</strong></div>
     <div><span class="label">Stability Fund</span><strong>${summary.stability_fund.pct_of_target}%</strong></div>
     <div><span class="label">Credit band</span><strong>${summary.credit_plan.score_band}</strong></div>
     <div><span class="label">Loan readiness</span><strong>${summary.credit_plan.loan_readiness_score}/100</strong></div>`;
+
+  const breakdownEl = document.getElementById("reality-breakdowns");
+  if (breakdownEl) {
+    const hasDetail = incomeDetail || expenseCats || billsDetail;
+    breakdownEl.classList.toggle("hidden", !hasDetail);
+    breakdownEl.innerHTML = hasDetail
+      ? `
+      ${incomeDetail ? `<div class="breakdown-block"><h3 class="form-sub">Income sources</h3>${incomeDetail}</div>` : ""}
+      ${expenseCats ? `<div class="breakdown-block"><h3 class="form-sub">Expense categories</h3>${expenseCats}</div>` : ""}
+      ${billsDetail ? `<div class="breakdown-block"><h3 class="form-sub">Recurring bills</h3>${billsDetail}</div>` : ""}`
+      : "";
+  }
+
   const snow = summary.debt_snowball;
   document.getElementById("snowball-line").textContent = snow.primary_target
     ? `Debt snowball #1: ${snow.primary_target} @ ${snow.guaranteed_return_pct}% APR — ${snow.rule}`
