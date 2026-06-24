@@ -6,6 +6,13 @@ import json
 from typing import Any
 
 from backend.services.cashflow_quadrant import assess_from_profile
+from backend.services.financial_profile import (
+    build_expense_breakdown,
+    build_income_breakdown,
+    collections_total,
+    parse_collections,
+    sync_headline_totals,
+)
 from backend.services.journey_engine import assess_stage
 
 APR_THRESHOLD = 7.5
@@ -140,6 +147,11 @@ def compute_credit_indicators(credit: dict | None) -> dict[str, Any]:
     utilization = float(credit.get("utilization_pct", 0) or 0)
     late_payments = bool(credit.get("late_payments_12mo", False))
     collections = bool(credit.get("collections", False))
+    collection_items = parse_collections(credit.get("collections_items"))
+    collections_balance = collections_total(collection_items)
+    charge_offs = int(credit.get("charge_offs") or 0)
+    bankruptcies = int(credit.get("bankruptcies") or 0)
+    inquiries = int(credit.get("inquiries_6mo") or 0)
 
     readiness = 70
     flags: list[str] = []
@@ -152,7 +164,7 @@ def compute_credit_indicators(credit: dict | None) -> dict[str, Any]:
         "poor": 580,
         "unknown": 650,
     }
-    est_score = band_scores.get(score_band, 650)
+    est_score = int(credit.get("estimated_score") or band_scores.get(score_band, 650))
 
     if utilization > 30:
         readiness -= 15
@@ -162,10 +174,24 @@ def compute_credit_indicators(credit: dict | None) -> dict[str, Any]:
         readiness -= 20
         flags.append("Late payments in last 12 months")
         actions.append("Set autopay minimums; build 6-month on-time streak")
-    if collections:
+    if collections or collection_items:
         readiness -= 25
-        flags.append("Collections on report")
+        flags.append(
+            f"Collections on report — ${collections_balance:,.0f} across {len(collection_items) or 1} item(s)"
+            if collections_balance
+            else "Collections on report"
+        )
         actions.append("Validate collection debt; negotiate pay-for-delete if legitimate")
+    if charge_offs:
+        readiness -= 15
+        flags.append(f"{charge_offs} charge-off(s) on report")
+        actions.append("Do not pay charged-off debt without written agreement")
+    if bankruptcies:
+        readiness -= 20
+        flags.append(f"Bankruptcy on report ({bankruptcies})")
+    if inquiries > 3:
+        readiness -= 5
+        flags.append(f"{inquiries} credit inquiries in last 6 months")
     if score_band in ("poor", "fair"):
         readiness -= 10
         actions.append("Consider secured card or credit-builder loan after fund cushion")
@@ -176,6 +202,8 @@ def compute_credit_indicators(credit: dict | None) -> dict[str, Any]:
         "score_band": score_band,
         "estimated_score_midpoint": est_score,
         "utilization_pct": utilization,
+        "collections_balance": collections_balance,
+        "collections_count": len(collection_items),
         "loan_readiness_score": readiness,
         "flags": flags,
         "weekly_actions": actions[:3] if actions else ["Maintain on-time payments; keep utilization under 30%"],
@@ -184,12 +212,15 @@ def compute_credit_indicators(credit: dict | None) -> dict[str, Any]:
 
 def build_financial_summary(profile) -> dict[str, Any]:
     """Build full summary from UserProfile ORM row."""
+    sync_headline_totals(profile)
     debts = json.loads(profile.debts_json or "[]")
     credit = json.loads(profile.credit_snapshot_json or "{}")
     business = json.loads(profile.business_budget_json or "{}")
 
-    income = profile.monthly_gross_income or 0
-    essentials = profile.monthly_essentials or 0
+    income_breakdown = build_income_breakdown(profile)
+    expense_breakdown = build_expense_breakdown(profile)
+    income = income_breakdown["total_monthly"] or profile.monthly_gross_income or 0
+    essentials = expense_breakdown["total_monthly"] or profile.monthly_essentials or 0
     split = compute_156520(income) if income > 0 else compute_156520(0)
     stability = compute_stability_gap(
         essentials,
@@ -232,6 +263,8 @@ def build_financial_summary(profile) -> dict[str, Any]:
         "employment_type": profile.employment_type or "self_employed",
         "monthly_gross_income": income,
         "monthly_essentials": essentials,
+        "income_breakdown": income_breakdown,
+        "expense_breakdown": expense_breakdown,
         "stability_fund": stability,
         "allocation_156520": split,
         "debts": debts,
@@ -267,17 +300,35 @@ def apply_intake_to_profile(profile, step: int, payload: dict) -> None:
             mix = default_income_mix(profile.cashflow_quadrant_primary, profile.employment_type)
         profile.cashflow_quadrant_json = json.dumps(mix)
     elif step == 2:
-        profile.monthly_gross_income = float(payload["monthly_gross_income"])
-        profile.monthly_essentials = float(payload["monthly_essentials"])
+        streams = payload.get("income_streams") or []
+        profile.income_streams_json = json.dumps(streams)
+        if payload.get("monthly_gross_income") is not None:
+            profile.monthly_gross_income = float(payload["monthly_gross_income"])
+        elif streams:
+            from backend.services.financial_profile import parse_income_streams, total_monthly_income
+
+            profile.monthly_gross_income = total_monthly_income(parse_income_streams(streams))
+        profile.data_source = "manual"
+        sync_headline_totals(profile)
+    elif step == 3:
+        from backend.services.financial_profile import EXPENSE_CATEGORIES
+
+        expenses = {k: float(payload.get(k) or 0) for k in EXPENSE_CATEGORIES}
+        profile.expenses_json = json.dumps(expenses)
+        if payload.get("monthly_essentials") is not None:
+            profile.monthly_essentials = float(payload["monthly_essentials"])
+        sync_headline_totals(profile)
+    elif step == 4:
+        profile.bills_json = json.dumps(payload.get("bills", []))
         profile.stability_fund_balance = float(payload.get("stability_fund_balance", 0))
         profile.stability_fund_target_months = int(payload.get("stability_fund_target_months", 4))
-        profile.data_source = "manual"
-    elif step == 3:
-        profile.debts_json = json.dumps(payload.get("debts", []))
-    elif step == 4:
-        profile.credit_snapshot_json = json.dumps(payload)
+        sync_headline_totals(profile)
     elif step == 5:
-        profile.business_budget_json = json.dumps(payload)
+        profile.debts_json = json.dumps(payload.get("debts", []))
     elif step == 6:
+        profile.credit_snapshot_json = json.dumps(payload)
+    elif step == 7:
+        profile.business_budget_json = json.dumps(payload)
+    elif step == 8:
         profile.footprints_json = json.dumps(payload.get("footprints", {}))
     profile.intake_step = max(profile.intake_step or 0, step)
