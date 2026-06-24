@@ -50,6 +50,59 @@ function renderBreakdownList(items, labelKey, amountKey) {
     .join("")}</ul>`;
 }
 
+function renderCreditPanel(summary) {
+  const credit = summary.credit_plan || {};
+  const snap = summary.credit_snapshot || {};
+  const items = credit.collections_items || snap.collections_items || [];
+  const flags = credit.flags || [];
+  const actions = credit.weekly_actions || [];
+  const hasCreditDetail =
+    items.length ||
+    flags.length ||
+    actions.length ||
+    credit.charge_offs ||
+    credit.bankruptcies ||
+    (credit.inquiries_6mo || 0) > 0 ||
+    snap.total_credit_limit ||
+    snap.estimated_score;
+
+  const el = document.getElementById("reality-credit");
+  if (!el) return;
+  el.classList.toggle("hidden", !hasCreditDetail);
+
+  const collectionsHtml = items.length
+    ? `<ul class="breakdown-list">${items
+        .map(
+          (c) =>
+            `<li><span>${c.creditor} <span class="muted small">(${c.status || "open"})</span></span><strong>${formatMoney(c.balance)}</strong></li>`
+        )
+        .join("")}</ul>`
+    : "";
+
+  const flagsHtml = flags.length
+    ? `<ul class="credit-flags">${flags.map((f) => `<li>${f}</li>`).join("")}</ul>`
+    : "";
+  const actionsHtml = actions.length
+    ? `<ul class="credit-actions">${actions.map((a) => `<li>${a}</li>`).join("")}</ul>`
+    : "";
+
+  el.innerHTML = `
+    <h3 class="form-sub">Credit & collections</h3>
+    <div class="credit-grid">
+      <div><span class="label">Estimated score</span><strong>${snap.estimated_score || credit.estimated_score_midpoint || "—"}</strong></div>
+      <div><span class="label">Utilization</span><strong>${credit.utilization_pct ?? snap.utilization_pct ?? 0}%</strong></div>
+      <div><span class="label">Credit limits</span><strong>${formatMoney(snap.total_credit_limit || 0)}</strong></div>
+      <div><span class="label">Revolving balance</span><strong>${formatMoney(snap.total_revolver_balance || 0)}</strong></div>
+      <div><span class="label">Collections balance</span><strong>${formatMoney(credit.collections_balance || 0)}</strong></div>
+      <div><span class="label">Charge-offs</span><strong>${credit.charge_offs ?? snap.charge_offs ?? 0}</strong></div>
+      <div><span class="label">Bankruptcies</span><strong>${credit.bankruptcies ?? snap.bankruptcies ?? 0}</strong></div>
+      <div><span class="label">Inquiries (6 mo)</span><strong>${credit.inquiries_6mo ?? snap.inquiries_6mo ?? 0}</strong></div>
+    </div>
+    ${collectionsHtml ? `<div class="breakdown-block"><h4 class="form-sub">Collection accounts</h4>${collectionsHtml}</div>` : ""}
+    ${flagsHtml ? `<div class="breakdown-block"><h4 class="form-sub">Flags</h4>${flagsHtml}</div>` : ""}
+    ${actionsHtml ? `<div class="breakdown-block"><h4 class="form-sub">This week</h4>${actionsHtml}</div>` : ""}`;
+}
+
 function renderFinancialReality(summary) {
   document.getElementById("data-badge").innerHTML = dataSourceBadge(summary.data_source);
   const income = summary.income_breakdown;
@@ -91,6 +144,8 @@ function renderFinancialReality(summary) {
       ${billsDetail ? `<div class="breakdown-block"><h3 class="form-sub">Recurring bills</h3>${billsDetail}</div>` : ""}`
       : "";
   }
+
+  renderCreditPanel(summary);
 
   const snow = summary.debt_snowball;
   document.getElementById("snowball-line").textContent = snow.primary_target

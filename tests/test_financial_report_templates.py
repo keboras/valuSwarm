@@ -32,7 +32,41 @@ def _sample_summary() -> dict:
             "snowball_plan": [{"name": "Chase Visa", "payment": 500, "apr": 22.4}],
             "weekly_actions": ["Pay $500 toward Chase Visa from Future bucket."],
         },
-        "credit_plan": {"score_band": "good", "utilization_pct": 28, "loan_readiness_score": 72},
+        "credit_plan": {
+            "score_band": "good",
+            "utilization_pct": 28,
+            "loan_readiness_score": 72,
+            "estimated_score_midpoint": 735,
+            "collections_balance": 450,
+            "collections_count": 1,
+            "collections_items": [{"creditor": "Medical collections", "balance": 450, "status": "open"}],
+            "charge_offs": 0,
+            "bankruptcies": 0,
+            "inquiries_6mo": 1,
+            "flags": ["Utilization 28% — on target"],
+            "weekly_actions": ["Maintain on-time payments."],
+        },
+        "credit_snapshot": {
+            "score_band": "good",
+            "estimated_score": 735,
+            "utilization_pct": 28,
+            "total_credit_limit": 12000,
+            "total_revolver_balance": 3360,
+            "collections_items": [{"creditor": "Medical collections", "balance": 450, "status": "open"}],
+        },
+        "income_breakdown": {
+            "total_monthly": 8200,
+            "streams": [
+                {"name": "Client retainers", "source_type": "business", "amount_monthly": 6200},
+                {"name": "W-2 spouse", "source_type": "w2", "amount_monthly": 2000},
+            ],
+        },
+        "expense_breakdown": {
+            "total_monthly": 4800,
+            "by_category_labeled": {"Housing (rent/mortgage)": 1800, "Food & groceries": 650},
+            "bills": [{"name": "Car insurance", "amount_monthly": 120, "due_day": 15, "autopay": True}],
+            "bills_total": 120,
+        },
         "cashflow_quadrant": {
             "badge": "S → B",
             "primary_label": "Self-employed",
@@ -76,6 +110,15 @@ def test_snapshot_contains_numbers():
     assert "$8,200" in md
     assert "15 / 65 / 20" in md
     assert "S → B" in md
+    assert "Client retainers" in md
+    assert "Medical collections" in md
+
+
+def test_snapshot_includes_breakdown_sections():
+    md = render_report_markdown("financial_snapshot", _sample_summary(), _sample_journey())
+    assert "Expense breakdown" in md
+    assert "Car insurance" in md
+    assert "Collections:" in md or "collections" in md.lower()
 
 
 def test_debt_plan_lists_debts():

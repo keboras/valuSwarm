@@ -301,6 +301,19 @@ body.solitude-mode { background: #0a0e12; }
   padding: 0.35rem 0; border-bottom: 1px solid #1e2630;
 }
 .breakdown-list li span { color: var(--muted); }
+.reality-credit {
+  margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #2a3544;
+}
+.credit-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem; margin-bottom: 0.75rem;
+}
+.credit-flags, .credit-actions {
+  list-style: none; padding: 0; margin: 0; font-size: 0.85rem;
+}
+.credit-flags li { color: #f1c40f; padding: 0.25rem 0; }
+.credit-actions li { color: var(--accent); padding: 0.25rem 0; }
+.reality-credit h4 { font-size: 0.85rem; margin: 0.5rem 0 0.25rem; color: var(--muted); }
 .playbook-card-head h3 { margin: 0.25rem 0 0.5rem; font-size: 1rem; }
 .playbook-cat { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .playbook-app { color: var(--accent); margin-top: 0.5rem; margin-bottom: 0; }
