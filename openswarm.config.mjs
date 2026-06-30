@@ -1,5 +1,8 @@
 import os from "node:os"
+import fs from "node:fs"
 import path from "node:path"
+
+export const productVersion = JSON.parse(fs.readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // Downstream projects can edit this file to rebrand the launcher and TUI build.
 export const product = {
@@ -14,6 +17,9 @@ export const product = {
   starterRepo: "VRSEN/OpenSwarm",
   starterFolder: "openswarm",
   entryFiles: "swarm.py,agency.py",
+  marketplaceSwarmId: "openswarm",
+  marketplaceParentSwarmId: undefined,
+  marketplaceSwarmOrigin: "original",
 }
 
 export const productTuiLogoLeft = [
@@ -61,7 +67,7 @@ export function resolveStateRoot(env = process.env, platform = process.platform,
 }
 
 export function getProductEnv(opts = {}) {
-  return {
+  const env = {
     AGENTSWARM_PRODUCT_DISPLAY_NAME: product.displayName,
     AGENTSWARM_PRODUCT_COMMAND: product.command,
     AGENTSWARM_PRODUCT_PACKAGE_NAME: product.packageName,
@@ -81,8 +87,14 @@ export function getProductEnv(opts = {}) {
     AGENTSWARM_PRODUCT_ENABLE_ADDONS: "true",
     AGENTSWARM_PRODUCT_ADDONS: JSON.stringify(productAddons),
     AGENTSWARM_PRODUCT_STATE_ROOT: opts.stateRoot ?? resolveStateRoot(opts.env),
-    AGENTSWARM_PRODUCT_VERSION: opts.version,
+    AGENTSWARM_PRODUCT_VERSION: productVersion,
+    AGENTSWARM_MARKETPLACE_SWARM_ID: product.marketplaceSwarmId,
+    AGENTSWARM_MARKETPLACE_SWARM_ORIGIN: product.marketplaceSwarmOrigin,
   }
+  if (product.marketplaceParentSwarmId) {
+    env.AGENTSWARM_MARKETPLACE_PARENT_SWARM_ID = product.marketplaceParentSwarmId
+  }
+  return env
 }
 
 export default {
@@ -91,6 +103,7 @@ export default {
   productTuiLogoRight,
   productWordmarkLines,
   productAddons,
+  productVersion,
   resolveStateRoot,
   getProductEnv,
 }

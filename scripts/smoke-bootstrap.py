@@ -121,6 +121,9 @@ def smoke_product_state_root_env() -> None:
                     "OPENSWARM_STATE_ROOT": str(root),
                     "AGENTSWARM_PRODUCT_STATE_ROOT": "/tmp/stale-openswarm-root",
                     "AGENTSWARM_BIN": "/explicit/bin",
+                    "ENABLE_TELEMETRY": "false",
+                    "OPEN_SWARM_TELEMETRY": "1",
+                    "AGENTSWARM_TELEMETRY": "true",
                 },
                 clear=False,
             ):
@@ -148,6 +151,8 @@ def smoke_product_state_root_env() -> None:
                     raise RuntimeError("OpenSwarm Python path did not configure the generic add-ons JSON")
                 if os.environ.get("AGENTSWARM_PRODUCT_ENABLE_ADDONS") != "true":
                     raise RuntimeError("OpenSwarm Python path did not enable AgentSwarm add-ons")
+                if os.environ.get("OPEN_SWARM_TELEMETRY") != "0" or os.environ.get("AGENTSWARM_TELEMETRY") != "0":
+                    raise RuntimeError("OpenSwarm Python path did not map ENABLE_TELEMETRY=0 to AgentSwarm telemetry opt-outs")
                 env.write_text(
                     'AGENTSWARM_BIN="/tmp/test-agentswarm"\nOPENAI_API_KEY="state-openai-updated"\n',
                     encoding="utf-8",
@@ -218,10 +223,54 @@ def smoke_product_state_root_env() -> None:
             patch.dict(os.environ, {"OPENSWARM_STATE_ROOT": str(base / "state")}, clear=False),
         ):
             values = run_utils._product_env_from_config()
-        if values.get("AGENTSWARM_PRODUCT_VERSION") != "9.8.7-userbase":
-            raise RuntimeError("OpenSwarm Python path did not find fallback product config in site.USER_BASE without Node")
         if values.get("AGENTSWARM_PRODUCT_DISPLAY_NAME") != "OpenSwarm":
             raise RuntimeError("OpenSwarm Python path loaded wrong fallback product config from site.USER_BASE")
+        if values.get("AGENTSWARM_PRODUCT_VERSION") != "9.8.7-userbase":
+            raise RuntimeError("OpenSwarm Python fallback product env did not send the package version")
+
+        with (
+            patch.object(run_utils, "__file__", str(module_dir / "run_utils.py")),
+            patch.object(run_utils.sys, "prefix", str(prefix)),
+            patch.object(run_utils.site, "USER_BASE", str(userbase)),
+            patch.object(run_utils.shutil, "which", lambda _name: None),
+            patch.dict(
+                os.environ,
+                {
+                    "AGENTSWARM_PRODUCT_VERSION": "stale-parent-version",
+                    "OPENSWARM_STATE_ROOT": str(base / "state"),
+                },
+                clear=False,
+            ),
+        ):
+            run_utils._configure_product_env()
+            if os.environ.get("AGENTSWARM_PRODUCT_VERSION") != "9.8.7-userbase":
+                raise RuntimeError("OpenSwarm Python fallback product env preserved a stale parent version")
+
+        early = base / "early-root"
+        later = base / "later-root"
+        early.mkdir()
+        later.mkdir()
+        (early / "openswarm.product-env.json").write_text(
+            (ROOT / "openswarm.product-env.json").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        (early / "package.json").write_text('{"version":"4.5.6-fallback"}\n', encoding="utf-8")
+        (later / "openswarm.config.mjs").write_text(
+            (ROOT / "openswarm.config.mjs").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        (later / "package.json").write_text('{"version":"0.0.0-wrong-root"}\n', encoding="utf-8")
+
+        with (
+            patch.object(run_utils, "__file__", str(early / "run_utils.py")),
+            patch.object(run_utils.sys, "prefix", str(later)),
+            patch.object(run_utils.site, "USER_BASE", str(userbase)),
+            patch.object(run_utils.shutil, "which", lambda _name: None),
+            patch.dict(os.environ, {"OPENSWARM_STATE_ROOT": str(base / "state")}, clear=False),
+        ):
+            values = run_utils._product_env_from_config()
+        if values.get("AGENTSWARM_PRODUCT_VERSION") != "4.5.6-fallback":
+            raise RuntimeError("OpenSwarm Python fallback product env used package metadata from another root")
 
 
 def smoke_python_openswarm_tui_binary_resolution() -> None:

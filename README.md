@@ -60,16 +60,15 @@ Connect to 10,000+ external services (Gmail, Slack, GitHub, HubSpot) via Composi
 
 ## 📦 Get Started in 30 Seconds
 
-**For most users (recommended):**
-
 ```bash
-npm install -g @vrsen/openswarm
-openswarm
+npx @vrsen/openswarm
 ```
 
 That's it! The setup wizard handles everything: authentication, dependencies, and configuration.
 
 **Requirements:** Node.js 20+ (Python 3.10+ auto-installed)
+
+Telemetry opt-out: set `ENABLE_TELEMETRY=0`, `OPEN_SWARM_TELEMETRY=0`, `AGENTSWARM_TELEMETRY=0`, or pass `--no-telemetry`.
 
 ## 🔧 Build Your Own Swarm
 

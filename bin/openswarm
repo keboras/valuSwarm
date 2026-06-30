@@ -142,6 +142,22 @@ function resolveAgentswarm(startDir) {
   }
 }
 
+function isVersionRequest(args) {
+  return args.length === 1 && (args[0] === '--version' || args[0] === '-v' || args[0] === 'version')
+}
+
+function disablesTelemetry(value) {
+  return typeof value === 'string' && ['0', 'false', 'off', 'no'].includes(value.trim().toLowerCase())
+}
+
+function telemetryEnv(source) {
+  if (!disablesTelemetry(source.ENABLE_TELEMETRY)) return {}
+  return {
+    OPEN_SWARM_TELEMETRY: '0',
+    AGENTSWARM_TELEMETRY: '0',
+  }
+}
+
 const openswarmBinary = resolveOpenSwarmBinary(packageDir)
 if (!openswarmBinary || typeof openswarmBinary !== 'string') {
   const packages = platformPackages().map((item) => item.name).join(', ')
@@ -157,11 +173,17 @@ if (!agentswarmBin) {
   process.exit(1)
 }
 
+if (isVersionRequest(process.argv.slice(2))) {
+  process.stdout.write(`${packageJson.version}\n`)
+  process.exit(0)
+}
+
 async function main() {
   const config = await import(pathToFileURL(path.join(packageDir, 'openswarm.config.mjs')).href)
   const env = {
     ...process.env,
-    ...config.getProductEnv({ version: packageJson.version }),
+    ...config.getProductEnv(),
+    ...telemetryEnv(process.env),
     AGENTSWARM_LAUNCHER: process.env.AGENTSWARM_LAUNCHER || '1',
     AGENTSWARM_BIN_PATH: openswarmBinary,
     PYTHONUTF8: process.env.PYTHONUTF8 || '1',
