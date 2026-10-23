@@ -32,20 +32,61 @@ export function tierClass(tier) {
   return `tier tier-${(tier || "bronze").toLowerCase()}`;
 }
 
+const STATIONS = [
+  { id: "home", n: "01", href: "/static/index.html", label: "Today" },
+  { id: "learn", n: "02", href: "/static/learn.html", label: "Learn" },
+  { id: "integrity", n: "03", href: "/static/integrity.html", label: "Integrity" },
+  { id: "studio", n: "04", href: "/static/studio.html", label: "Studio" },
+  { id: "advisor", n: "05", href: "/static/advisor.html", label: "Ask" },
+];
+
 export function renderNav(active) {
-  const links = [
-    { id: "home", href: "/static/index.html", label: "Command Center" },
-    { id: "learn", href: "/static/learn.html", label: "Learn" },
-    { id: "studio", href: "/static/studio.html", label: "Studio" },
-    { id: "integrity", href: "/static/integrity.html", label: "Your Integrity" },
-    { id: "advisor", href: "/static/advisor.html", label: "Ask Advisor" },
-  ];
-  return links
-    .map(
-      (l) =>
-        `<a href="${l.href}" class="${active === l.id ? "active" : ""}">${l.label}</a>`
-    )
-    .join("");
+  const stations = STATIONS.map((s) => {
+    const sub =
+      s.id === "home" && active === "home"
+        ? `<div class="ow-sub" role="tablist" aria-label="Today layers">
+            <button type="button" class="deck-btn active" data-deck="pulse" role="tab"><span>1.1</span> Numbers</button>
+            <button type="button" class="deck-btn" data-deck="moves" role="tab"><span>1.2</span> Move</button>
+            <button type="button" class="deck-btn" data-deck="desk" role="tab"><span>1.3</span> Pause</button>
+          </div>`
+        : "";
+    return `<div class="ow-station-block${s.id === "advisor" ? " is-quiet" : ""}">
+      <a class="ow-station${active === s.id ? " is-on" : ""}" href="${s.href}" data-station="${s.n}" ${active === s.id ? 'aria-current="page"' : ""}>
+        <span class="ow-n">${s.n}</span>
+        <span class="ow-l">${s.label}</span>
+      </a>
+      ${sub}
+    </div>`;
+  }).join("");
+  return `<a class="ow-mark" href="/static/index.html" aria-label="OmniWealth — Today">
+      <b>OW</b>
+      <em>OmniWealth</em>
+    </a>
+    <p class="ow-pledge">You execute.</p>
+    <nav class="ow-stations" aria-label="Stations">${stations}</nav>
+    <p class="ow-keys"><kbd>1</kbd>–<kbd>5</kbd> jump</p>`;
+}
+
+export function mountShell(active) {
+  document.body.classList.add("ow");
+  const el = document.getElementById("nav");
+  if (!el) return;
+  el.classList.add("ow-rail");
+  el.innerHTML = renderNav(active);
+  bindStationKeys();
+}
+
+function bindStationKeys() {
+  if (window.__owKeys) return;
+  window.__owKeys = true;
+  document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (/INPUT|TEXTAREA|SELECT/.test(tag) || e.target?.isContentEditable) return;
+    const map = { 1: "/static/index.html", 2: "/static/learn.html", 3: "/static/integrity.html", 4: "/static/studio.html", 5: "/static/advisor.html" };
+    const href = map[e.key];
+    if (href) window.location.href = href;
+  });
 }
 
 export async function requireOnboarding() {

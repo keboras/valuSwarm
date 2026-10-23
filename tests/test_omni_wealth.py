@@ -89,6 +89,43 @@ def test_toolbox_gates_by_fund():
     assert funded["roth_ira"] == "now" and funded["sep_ira"] == "now"
 
 
+def test_toolbox_has_learning_paths():
+    tools = {t["id"]: t for t in toolbox(_Starter())}
+    hysa = tools["hysa"]
+    assert hysa["summary"]
+    assert hysa["next_action"]
+    assert len(hysa["path"]) >= 3
+    assert "Fund" in hysa["summary"] or "HYSA" in hysa["summary"]
+
+
+def test_toolbox_includes_credit_repair_path():
+    starter = {t["id"]: t for t in toolbox(_Starter())}
+    credit = starter["credit_file"]
+    assert credit["status"] == "now"
+    assert credit["next_action"]
+    assert any("AnnualCreditReport" in s["do"] for s in credit["path"])
+    assert any("repair" in s["do"].lower() for s in credit["path"])
+    hurt = _Starter()
+    hurt.credit_snapshot_json = (
+        '{"score_band": "poor", "utilization_pct": 55, "late_payments_12mo": true, '
+        '"collections": true, "total_credit_limit": 10000, "total_revolver_balance": 5500}'
+    )
+    path = next(t for t in toolbox(hurt) if t["id"] == "credit_file")
+    assert path["status"] == "now"
+    blob = " ".join(s["do"] for s in path["path"]).lower()
+    assert "30%" in blob or "utilization" in blob
+    assert "autopay" in blob
+    healthy = _Profile()
+    healthy.credit_snapshot_json = '{"score_band": "excellent", "utilization_pct": 12}'
+    maintain = next(t for t in toolbox(healthy) if t["id"] == "credit_file")
+    assert maintain["status"] == "check"
+    unknown = _Starter()
+    unknown.credit_snapshot_json = "{}"
+    unseen = next(t for t in toolbox(unknown) if t["id"] == "credit_file")
+    assert unseen["status"] == "now"
+    assert "report" in unseen["next_action"].lower()
+
+
 def test_next_tax_deadline():
     assert next_tax_deadline("2026-10-21")["due"] == "2027-01-15"
 

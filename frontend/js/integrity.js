@@ -1,4 +1,4 @@
-import { fetchJson, pillarBar, requireOnboarding, renderNav, tierClass } from "./app.js";
+import { fetchJson, pillarBar, requireOnboarding, mountShell, tierClass } from "./app.js?v=5";
 
 const PILLAR_LABELS = {
   behavioral_trust: "Follow-through",
@@ -10,7 +10,7 @@ const PILLAR_LABELS = {
 
 const BASELINE_PILLARS = new Set(["behavioral_trust", "self_trust", "consistency"]);
 
-document.getElementById("nav").innerHTML = renderNav("integrity");
+mountShell("integrity");
 
 function renderScores(data) {
   document.getElementById("composite").textContent = data.reputation_credit_score.toFixed(1);

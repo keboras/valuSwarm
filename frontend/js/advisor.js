@@ -1,4 +1,4 @@
-import { fetchJson, requireOnboarding, renderNav, renderAdvisorEsbiContext, formatEsbiInstructions } from "./app.js";
+import { fetchJson, requireOnboarding, mountShell, renderAdvisorEsbiContext, formatEsbiInstructions } from "./app.js?v=5";
 
 const AGENCY_PATH = "/Architect_Blueprint/get_response";
 const USER_ID = "default";
@@ -217,7 +217,7 @@ async function clearMemory() {
   appendMessage("assistant", "Conversation cleared. Your profile and remembered facts are still saved.");
 }
 
-document.getElementById("nav").innerHTML = renderNav("advisor");
+mountShell("advisor");
 
 requireOnboarding().then(async () => {
   const statusEl = document.getElementById("advisor-status");

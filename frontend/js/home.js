@@ -1,4 +1,4 @@
-import { fetchJson, requireOnboarding, renderNav, formatMoney, dataSourceBadge, renderEsbiPanel } from "./app.js?v=3";
+import { fetchJson, requireOnboarding, mountShell, formatMoney, dataSourceBadge, renderEsbiPanel } from "./app.js?v=5";
 
 function renderStartGuide(profile, journey, selfTrust) {
   const literacy = profile.literacy_completed || [];
@@ -414,16 +414,31 @@ function renderToday(data) {
   const order = { now: 0, next: 1, check: 2, later: 3 };
   document.getElementById("toolbox-grid").innerHTML = [...tools]
     .sort((a, b) => order[a.status] - order[b.status])
-    .map(
-      (t) => `<article class="tool status-${t.status}">
+    .map((t) => {
+      const steps = (t.path || [])
+        .map(
+          (s, i) => `<li>
+            <b>${String(i + 1).padStart(2, "0")}</b>
+            <span>${esc(s.do)}</span>
+            ${s.why ? `<em>${esc(s.why)}</em>` : ""}
+          </li>`
+        )
+        .join("");
+      const open = t.status === "now" || t.id === "credit_file" ? " open" : "";
+      return `<article class="tool status-${t.status} kind-${esc(t.kind || "account")}">
         <span class="chip chip-${t.status}">${STATUS_WORD[t.status] || t.status}</span>
         <h3>${esc(t.name)}</h3>
-        <p>${esc(t.what)}</p>
+        <p class="tool-summary">${esc(t.summary || t.what)}</p>
+        <p class="tool-next"><span>Do next</span> ${esc(t.next_action || t.use_for)}</p>
+        ${steps ? `<details class="tool-path-wrap"${open}><summary>Action path</summary><ol class="tool-path">${steps}</ol></details>` : ""}
         <p class="tool-limit">${esc(t.limit)}</p>
         <p class="tool-use">${esc(t.status === "now" || !t.gate ? t.use_for : t.gate)}</p>
-        <a href="${esc(t.source)}" target="_blank" rel="noopener">Source ↗</a>
-      </article>`
-    )
+        <p class="tool-links">
+          ${t.lesson ? `<a href="${esc(t.lesson)}">Learn the idea</a>` : ""}
+          <a href="${esc(t.source)}" target="_blank" rel="noopener">${esc(t.source_label || "Source")} ↗</a>
+        </p>
+      </article>`;
+    })
     .join("");
   document.dispatchEvent(new CustomEvent("today:ready", { detail: data }));
 }
@@ -463,12 +478,11 @@ function showDeck(name) {
   });
 }
 
+mountShell("home");
 document.querySelectorAll(".deck-btn").forEach((btn) => {
   btn.addEventListener("click", () => showDeck(btn.dataset.deck));
 });
 showDeck("pulse");
-
-document.getElementById("nav").innerHTML = renderNav("home");
 
 function applySolitudeMode(active) {
   const on = active === true;

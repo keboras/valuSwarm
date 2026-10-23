@@ -3,15 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Studio — Architect Blueprint</title>
-  <link rel="stylesheet" href="/static/css/styles.css" />
+  <title>Studio — OmniWealth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=ow6" />
 </head>
-<body>
-  <nav class="nav" id="nav"></nav>
+<body class="ow">
+  <aside class="ow-rail" id="nav" aria-label="OmniWealth stations"></aside>
   <main class="container">
     <header>
+      <p class="ow-kicker muted small">04 · Studio</p>
       <h1>Architect Studio</h1>
-      <p class="muted">Create deliverables — financial reports, pitch decks, images, and video. Uses your intake profile when available.</p>
+      <p class="muted">Reports, pitch cards, decks, and media — filled from your saved profile when it exists.</p>
     </header>
     <p id="studio-status" class="alert hidden"></p>
     <p class="small muted disclaimer">Educational / creative outputs only — verify numbers and compliance before sharing externally.</p>
@@ -92,6 +96,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="/static/js/studio.js"></script>
+  <script type="module" src="/static/js/studio.js?v=5"></script>
 </body>
 </html>

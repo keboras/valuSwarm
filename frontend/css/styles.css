@@ -1,31 +1,25 @@
 :root {
-
-  --bg: #0f1419;
-
-  --surface: #1a222c;
-
-  --text: #e7ecf1;
-
-  --muted: #8b98a5;
-
-  --accent: #3d8bfd;
-
-  --amber: #f0a020;
-
-  --bronze: #cd7f32;
-
-  --silver: #aaa;
-
-  --gold: #d4af37;
-
-  --platinum: #e5e4e2;
-
-  --success: #3dd68c;
-
-  --error: #f87171;
-
-  font-family: "Segoe UI", system-ui, sans-serif;
-
+  --bg: #07080c;
+  --surface: #101218;
+  --text: #e6e1d6;
+  --muted: #8a8478;
+  --accent: #c9a36a;
+  --signal: #c9a36a;
+  --amber: #c9a36a;
+  --bronze: #c9a36a;
+  --silver: #b5b0a6;
+  --gold: #c9a36a;
+  --platinum: #e6e1d6;
+  --success: #7d9b78;
+  --error: #c46b5d;
+  --rule: rgba(230, 225, 214, 0.12);
+  --space: 8px;
+  --rail: 128px;
+  --well: 960px;
+  --font-display: "Bebas Neue", sans-serif;
+  --font-figure: Fraunces, Georgia, serif;
+  --font-body: "Open Sans", system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 
@@ -445,4 +439,324 @@ body.command .btn-secondary { background: transparent; color: var(--text); borde
   body.command .nav { flex-direction: row; flex-wrap: wrap; }
   body.command .container.command-grid, .star-card { grid-template-columns: 1fr; }
   body.command h1 { font-size: 2.4rem; }
+}
+
+/* —— OmniWealth station shell (brand + nav + 8px grid) —— */
+body.ow {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.55;
+}
+body.ow .ow-rail,
+#nav.ow-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--rail);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+  padding: 24px 12px 20px;
+  background: #07080c;
+  border-right: 1px solid var(--rule);
+  box-sizing: border-box;
+}
+.ow-mark {
+  display: grid;
+  gap: 2px;
+  text-decoration: none;
+  color: var(--text);
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.ow-mark b {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  font-weight: 400;
+}
+.ow-mark em {
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ow-pledge {
+  margin: 0 4px 8px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--signal);
+  white-space: nowrap;
+}
+.ow-stations {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.ow-station-block {
+  display: flex;
+  flex-direction: column;
+}
+.ow-station-block.is-quiet { margin-top: auto; }
+.ow-station {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 8px;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+}
+.ow-station .ow-n {
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  color: inherit;
+}
+.ow-station .ow-l {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ow-station:hover { color: var(--text); }
+.ow-station.is-on {
+  color: var(--text);
+  border-left-color: var(--signal);
+}
+.ow-station-block.is-quiet .ow-station { opacity: 0.85; }
+.ow-sub {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 4px 8px;
+  padding: 4px 0 8px;
+  border-left: 1px solid var(--rule);
+}
+.ow-sub .deck-btn,
+body.command.ow .ow-sub .deck-btn {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 6px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+.ow-sub .deck-btn span { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.06em; }
+.ow-sub .deck-btn.active,
+body.command.ow .ow-sub .deck-btn.active {
+  color: var(--text);
+  background: transparent;
+  border-left-color: var(--signal);
+}
+.ow-keys {
+  margin: 8px 4px 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ow-keys kbd {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text);
+}
+body.ow:not(.meridian):has(.ow-rail) { padding-left: var(--rail); }
+body.ow:not(.meridian) .container {
+  max-width: var(--well);
+  margin: 0 auto;
+  padding: 72px clamp(24px, 6vw, 64px) 128px;
+}
+body.ow main a,
+body.ow .container a {
+  color: var(--signal);
+  text-underline-offset: 3px;
+}
+body.ow:not(.meridian) .container.narrow { max-width: 560px; }
+body.ow h1 {
+  font-family: var(--font-figure);
+  font-weight: 500;
+  font-size: clamp(28px, 3vw, 40px);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 20px;
+}
+body.ow h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 18px;
+  margin: 0 0 24px;
+}
+body.ow .ow-kicker,
+body.ow header > .muted:first-of-type {
+  margin-top: 0;
+}
+body.ow header {
+  margin-bottom: 64px;
+  padding-bottom: 40px;
+  max-width: 36rem;
+}
+body.ow header > p.muted {
+  margin: 8px 0 0;
+  max-width: 32rem;
+  line-height: 1.65;
+}
+body.ow .card,
+body.ow .kpi,
+body.ow .guide-card,
+body.ow .summary {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--rule);
+  border-radius: 0;
+  padding: 64px 0 48px;
+  margin: 0;
+}
+body.ow .kpi-row { margin: 16px 0 40px; }
+body.ow .playbook-grid { gap: 28px; margin-top: 24px; }
+body.ow .studio-layout { gap: 48px; }
+body.ow .btn {
+  min-height: 44px;
+  border-radius: 0;
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--signal);
+  color: #07080c;
+  border: 0;
+}
+body.ow .btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--rule);
+}
+body.ow .btn-sm { min-height: 36px; }
+body.ow .emotion-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+body.ow .emotion-btns button,
+body.ow .playbook-filter,
+body.ow .connect-btn {
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  color: var(--muted);
+  min-height: 36px;
+  padding: 8px 12px;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+  cursor: pointer;
+}
+body.ow .playbook-filter.active,
+body.ow .emotion-btns button.active {
+  color: var(--text);
+  border-color: var(--signal);
+}
+body.ow .playbook-card,
+body.ow .report-template-card,
+body.ow .esbi-cell,
+body.ow .pattern-card,
+body.ow .pause-card,
+body.ow .memory-summary,
+body.ow .esbi-panel {
+  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--rule);
+}
+body.ow input,
+body.ow select,
+body.ow textarea {
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--text);
+}
+body.ow .bar,
+body.ow .progress-track {
+  border-radius: 0;
+  background: rgba(230, 225, 214, 0.08);
+}
+body.ow .alert {
+  border-radius: 0;
+  background: rgba(201, 163, 106, 0.1);
+  border-left: 2px solid var(--signal);
+}
+body.command.ow,
+body.command.ow.meridian {
+  --accent: #c9a36a;
+  --success: #7d9b78;
+  font-family: var(--font-body);
+  background: var(--bg);
+}
+body.command.ow::before { display: none; }
+body.ow .alloc-grid,
+body.ow .kpi-row,
+body.ow .memory-summary {
+  gap: 32px;
+}
+body.ow .lesson-card { margin-bottom: 48px; }
+body.ow .lesson-body { margin: 1.5rem 0; line-height: 1.8; }
+body.ow .lesson-section p { margin: 0.85rem 0; line-height: 1.75; }
+body.ow .lesson-objectives,
+body.ow .lesson-example,
+body.ow .key-point {
+  padding: 20px 24px;
+  margin: 20px 0;
+}
+body.ow .lesson-exercise { padding: 16px 0 16px 20px; margin: 28px 0; }
+body.ow .lesson-list { margin: 12px 0 24px; }
+body.ow .pattern-card,
+body.ow .pause-card { padding: 24px; margin: 20px 0; }
+body.ow .playbook-card,
+body.ow .report-template-card { padding: 24px 24px 28px; }
+body.ow .alloc-grid strong,
+body.ow .kpi .value {
+  font-family: var(--font-figure);
+  font-weight: 500;
+}
+@media (max-width: 860px) {
+  body.ow:not(.meridian):has(.ow-rail) { padding-left: 0; padding-top: 72px; }
+  body.ow .ow-rail,
+  #nav.ow-rail {
+    inset: 0 0 auto 0;
+    width: 100%;
+    height: 64px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    overflow-x: auto;
+  }
+  .ow-mark em, .ow-pledge, .ow-keys, .ow-station .ow-l, .ow-sub { display: none; }
+  .ow-mark { border: 0; padding: 0 8px 0 0; }
+  .ow-stations { flex-direction: row; flex: 1; }
+  .ow-station { min-height: 44px; min-width: 44px; grid-template-columns: 1fr; justify-items: center; }
+  .ow-station-block.is-quiet { margin-top: 0; }
 }

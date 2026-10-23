@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OmniWealth — Command</title>
+  <title>OmniWealth — Today</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/styles.css" />
-  <link rel="stylesheet" href="/static/css/meridian.css?v=11" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=ow6" />
+  <link rel="stylesheet" href="/static/css/meridian.css?v=22" />
 </head>
-<body class="command meridian" data-view="pulse">
+<body class="command meridian ow" data-view="pulse">
   <div class="plate" aria-hidden="true">
     <canvas id="particles" class="particles"></canvas>
     <div class="sky"></div>
@@ -18,11 +18,7 @@
     <div class="spot"></div>
   </div>
   <div class="command-shell">
-  <aside class="command-rail">
-    <div class="command-mark">OW<span>omni</span></div>
-    <nav class="nav" id="nav"></nav>
-    <p class="rail-note">Fund locked. Bets capped. You execute.</p>
-  </aside>
+  <aside class="command-rail ow-rail" id="nav" aria-label="OmniWealth stations"></aside>
   <div class="command-stage">
   <header class="command-top">
     <div>
@@ -106,7 +102,7 @@
 
     <section class="card toolbox-card keep span-2" id="toolbox-card" data-deck="pulse">
       <h2>Your money toolbox</h2>
-      <p class="cue">Accounts that fit you now and what unlocks next. Limits checked on irs.gov and Bankrate <span id="toolbox-date"></span>.</p>
+      <p class="cue">Learn the tool, then do the next step. Accounts, credit repair, and unlocks — rules checked <span id="toolbox-date"></span>.</p>
       <div class="toolbox" id="toolbox-grid"></div>
     </section>
 
@@ -273,9 +269,9 @@
       <div class="kpi"><span class="label">Deep work today</span><span class="value" id="deep-work">—</span></div>
       <div class="kpi"><span class="label">Integrity</span><span class="value" id="solitude-integrity">—</span></div>
     </div>
-    <p class="muted small">Noise suppressed. Exit Solitude Mode from Command Center when your hour ends.</p>
+    <p class="muted small">Noise suppressed. Exit Solitude Mode from Today when your hour ends.</p>
   </main>
-  <script type="module" src="/static/js/home.js?v=omni6"></script>
-  <script src="/static/js/meridian.js?v=8"></script>
+  <script type="module" src="/static/js/home.js?v=omni8"></script>
+  <script src="/static/js/meridian.js?v=9"></script>
 </body>
 </html>

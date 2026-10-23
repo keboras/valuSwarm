@@ -490,21 +490,21 @@
     node.addEventListener("click", () => go(node.getAttribute("data-go")));
   });
 
-  document.querySelectorAll(".deck-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      document.body.classList.add("switching");
-      window.setTimeout(() => {
-        document.body.classList.remove("switching");
-        const lens = document.getElementById("lens");
-        if (!lens) return;
-        const onPulse = (document.body.dataset.view || "pulse") === "pulse";
-        if (!onPulse) lens.hidden = true;
-        else if (document.body.dataset.lens) {
-          lens.hidden = false;
-          renderLens(document.body.dataset.lens);
-        }
-      }, 0);
-    });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest(".deck-btn");
+    if (!button) return;
+    document.body.classList.add("switching");
+    window.setTimeout(() => {
+      document.body.classList.remove("switching");
+      const lens = document.getElementById("lens");
+      if (!lens) return;
+      const onPulse = (document.body.dataset.view || "pulse") === "pulse";
+      if (!onPulse) lens.hidden = true;
+      else if (document.body.dataset.lens) {
+        lens.hidden = false;
+        renderLens(document.body.dataset.lens);
+      }
+    }, 0);
   });
 
   document.querySelectorAll(".card").forEach((card) => {
@@ -519,14 +519,7 @@
     root.style.setProperty("--hx", (event.clientX / window.innerWidth * 100) + "%");
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.target && /INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
-    const keys = { "1": "pulse", "2": "moves", "3": "desk" };
-    const name = keys[event.key];
-    if (!name) return;
-    const button = document.querySelector('.deck-btn[data-deck="' + name + '"]');
-    if (button) button.click();
-  });
+  /* Station keys 1–5 live in app.js. Today layers are the rail substations, not number keys. */
 
   const form = document.getElementById("smart-move-form");
   if (!form) return;

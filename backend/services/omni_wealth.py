@@ -909,8 +909,314 @@ def list_journal(profile) -> list[dict[str, Any]]:
     return _loads(getattr(profile, "journal_json", None), [])
 
 
+def _step(do: str, why: str = "") -> dict[str, str]:
+    return {"do": do, "why": why}
+
+
+def _fund_picture(profile) -> dict[str, Any]:
+    alloc = allocate_capital(profile)
+    essentials = _money(profile.monthly_essentials)
+    months = int(profile.stability_fund_target_months or 4)
+    target = _money(essentials * months)
+    bal = _money(profile.stability_fund_balance)
+    return {
+        "alloc": alloc,
+        "pct": alloc["stability_fund_pct"],
+        "balance": bal,
+        "target": target,
+        "gap": _money(max(0.0, target - bal)),
+        "month_of_bills": essentials,
+    }
+
+
+def _credit_repair_tool(profile) -> dict[str, Any]:
+    """Learn-then-do credit path. Educational — not a credit-repair company and not a score promise."""
+    from backend.services.financial_intake import compute_credit_indicators
+
+    snap = _loads(profile.credit_snapshot_json, {})
+    plan = compute_credit_indicators(snap)
+    picture = _fund_picture(profile)
+    util = float(plan.get("utilization_pct") or 0)
+    limit = float(snap.get("total_credit_limit") or 0)
+    revolver = float(snap.get("total_revolver_balance") or 0)
+    band = plan.get("score_band") or "unknown"
+    score = plan.get("estimated_score_midpoint")
+    late = bool(plan.get("late_payments_12mo"))
+    collections = bool(plan.get("collections_items") or plan.get("collections_balance") or snap.get("collections"))
+    inquiries = int(plan.get("inquiries_6mo") or 0)
+    charge_offs = int(plan.get("charge_offs") or 0)
+    hot = _high_apr_debt(profile)
+    hurting = late or collections or charge_offs or util > 30 or band in ("poor", "fair", "unknown") or inquiries > 3
+    status = "now" if hurting else "check"
+
+    path: list[dict[str, str]] = [
+        _step(
+            "Pull your reports at AnnualCreditReport.com (free, all three bureaus).",
+            "You cannot fix what you have not seen. Dispute only what is wrong — not what is ugly but true.",
+        )
+    ]
+    if late:
+        path.append(
+            _step(
+                "Turn on autopay for every minimum due. One late mark hurts more than a high balance.",
+                "Payment history is the largest score factor. The streak starts this cycle, not next year.",
+            )
+        )
+    else:
+        path.append(
+            _step(
+                "Keep autopay on every card and installment. Do not skip a minimum to fund a bet.",
+                "On-time is the whole game if the rest of the file is messy.",
+            )
+        )
+    if util > 30:
+        if limit > 0:
+            target_bal = _money(limit * 0.30)
+            paydown = _money(max(0.0, revolver - target_bal)) if revolver else None
+            dollars = f" Pay about ${paydown:,.0f} to get under 30% of your ${limit:,.0f} limit." if paydown else ""
+        else:
+            dollars = " You did not list a limit — add it in intake so this number is real."
+        path.append(
+            _step(
+                f"Utilization is {util:.0f}%. Get revolving balances under 30% of limits.{dollars}",
+                "Balances reported near statement date are what bureaus see. Pay before that date, not the due date.",
+            )
+        )
+    if hot:
+        path.append(
+            _step(
+                f"Pay every minimum, then send extra Future-bucket dollars to {hot.get('name', 'the highest-APR card')} ({float(hot.get('apr') or 0):g}% APR).",
+                "A 22% card is a guaranteed 22% return. Do not close the card after it is paid — that can raise utilization.",
+            )
+        )
+    if collections:
+        items = plan.get("collections_items") or []
+        names = ", ".join(i.get("creditor") or "collection" for i in items[:3]) or "the collection"
+        path.append(
+            _step(
+                f"Validate {names}. If it is yours, get any deal in writing before you pay. Ask for pay-for-delete only in writing.",
+                "Paying a collection can restart the clock. Do not talk to a collector without a paper trail. This app is not a repair firm.",
+            )
+        )
+    if charge_offs:
+        path.append(
+            _step(
+                "Do not pay a charged-off account without a written agreement that states the amount and how it will report.",
+                "A verbal 'we'll update the bureau' is not a plan.",
+            )
+        )
+    if inquiries > 3:
+        path.append(
+            _step(
+                f"You have {inquiries} hard pulls in 6 months. Freeze the file and stop new applications for 6 months.",
+                "Shopping the same loan type in a short window can count as one pull. Random new cards do not.",
+            )
+        )
+    if band in ("poor", "fair") and picture["pct"] < 50:
+        path.append(
+            _step(
+                "Do not open a new card yet. Fill one month of the Stability Fund first, then consider a secured card only if the file is thin.",
+                "A new account is a hard pull plus a lower average age. It is a tool after the bleeding stops, not instead of it.",
+            )
+        )
+    elif band in ("poor", "fair") and picture["pct"] >= 50:
+        path.append(
+            _step(
+                "If the file is thin (few accounts), a secured card you never carry a balance on can add history. If the file is already thick, skip this.",
+                "Secured credit is a teaching tool, not a shopping card.",
+            )
+        )
+    path.append(
+        _step(
+            "Do not hire a 'credit repair' company to send disputes you can send yourself.",
+            "CFPB: you already have the right to dispute errors for free. Paying someone to mail letters is optional, not required.",
+        )
+    )
+
+    if hurting:
+        first_fix = "on-time payments" if late else ("utilization" if util > 30 else "the collection file" if collections else "the credit report")
+        summary = (
+            f"Score band {band}"
+            + (f" (~{score})" if score else "")
+            + f". Loan-readiness {plan['loan_readiness_score']}/100. "
+            f"Work {first_fix} this week — not a new account, not a repair firm."
+        )
+        if late:
+            next_action = "Turn on autopay for every minimum due this week."
+        elif util > 30:
+            next_action = f"Get revolving utilization under 30% (now {util:.0f}%)."
+        elif collections:
+            next_action = "Validate each collection in writing before you pay anything."
+        else:
+            next_action = path[0]["do"]
+    else:
+        summary = (
+            f"Score band {band}"
+            + (f" (~{score})" if score else "")
+            + f". Utilization {util:.0f}%. No late marks on file. Keep the streak and pull the report twice a year."
+        )
+        next_action = "Pull the three reports this week and confirm every account is yours."
+
+    return {
+        "id": "credit_file",
+        "name": "Credit file — repair path",
+        "kind": "habit",
+        "what": "Bureaus score on-time payments, how much of your limits you use, collections, and new applications. You repair a file by changing those facts — not by paying a vendor to mail letters.",
+        "limit": "Educational only. Not a credit-repair service, FICO prediction, or loan offer.",
+        "use_for": "Raise the file so a later card, auto, or business line is not a surprise. Never borrow to bet.",
+        "unlock": "always",
+        "source": "https://www.consumerfinance.gov/consumer-tools/credit-reports-and-scores/",
+        "source_label": "CFPB credit reports",
+        "lesson": "/static/learn.html",
+        "status": status,
+        "gate": "" if hurting else "File looks stable — maintain it.",
+        "researched_on": RESEARCHED_ON,
+        "summary": summary,
+        "next_action": next_action,
+        "path": path,
+        "flags": plan.get("flags") or [],
+    }
+
+
+def _decorate_tool(profile, item: dict[str, Any], status: str, gate: str) -> dict[str, Any]:
+    picture = _fund_picture(profile)
+    tax = tax_rate_for(profile)
+    deadline = next_tax_deadline()
+    hot = _high_apr_debt(profile)
+    tool_id = item["id"]
+    summary = item["what"]
+    next_action = item["use_for"] if status == "now" else (gate or item["use_for"])
+    path: list[dict[str, str]] = []
+
+    if tool_id == "hysa":
+        summary = (
+            f"Stability Fund is {picture['pct']:g}% full (${picture['balance']:,.0f} of ${picture['target']:,.0f}). "
+            "Open two HYSAs — Fund and Tax — and never mix them."
+        )
+        next_action = (
+            f"Open the Fund HYSA, then move the next routed ${picture['gap']:,.0f} gap toward it."
+            if picture["gap"]
+            else "Fund is full. Keep the HYSA for the tax bucket and overflow, not for bets."
+        )
+        path = [
+            _step("Learn: this is cash you cannot lose. APY changes; FDIC is the point, not chasing 0.1%."),
+            _step("Open a dedicated Stability Fund HYSA. Nickname it Fund."),
+            _step("Open a second HYSA named Tax. Business deposits send the tax slice here first."),
+            _step("When Today says Route it, confirm the Fund line, then actually transfer."),
+        ]
+    elif tool_id == "tax_bucket":
+        summary = (
+            f"Your tax slice is {tax['pct']:g}%. Next {deadline['label']} payment is due {deadline['due']} "
+            f"({deadline['days_left']} days). {tax['why']}"
+        )
+        next_action = f"Calendar {deadline['due']} and keep the tax HYSA separate from the Fund."
+        path = [
+            _step("Learn: self-employment tax is 15.3% before income tax. W-2 withholding does not cover business profit."),
+            _step("Confirm the Tax HYSA exists. Nickname it Tax — not Fund."),
+            _step(f"Every business deposit: send {tax['pct']:g}% there the same day."),
+            _step(f"Pay 1040-ES by {deadline['due']}. Underpaying here is a penalty, not a bet."),
+        ]
+    elif tool_id == "debt_avalanche":
+        if hot:
+            summary = (
+                f"{hot.get('name', 'Highest-APR debt')} is {float(hot.get('apr') or 0):g}% APR "
+                f"on ${float(hot.get('balance') or 0):,.0f}. That rate is a guaranteed return if you pay it down."
+            )
+            next_action = f"Pay every minimum, then send extra Future-bucket dollars to {hot.get('name', 'that debt')}."
+            path = [
+                _step("Learn: avalanche = highest APR first. Snowball = smallest balance first. Math prefers avalanche."),
+                _step("Autopay every minimum so nothing goes late while you focus extra money."),
+                _step(f"Route extra to {hot.get('name', 'the highest APR')}. Do not close the card after it hits zero."),
+                _step("Do not refinance into a new card just to 'reset' — that is a pull plus a new balance."),
+            ]
+        else:
+            summary = f"No debt at or above {DEBT_APR_THRESHOLD}% APR on file. Skip payoff theater; fund the Stability Fund."
+            next_action = gate or "No high-APR debt to attack."
+            path = [_step("If a card exists and is missing from intake, add it. A hidden 22% card makes this page a lie.")]
+    elif tool_id == "roth_ira":
+        if status == "now":
+            summary = f"Fund is {picture['pct']:g}% full. Roth is the first long-term account — ${7500:,.0f} room in 2026 if income qualifies."
+            next_action = "Open a Roth at a brokerage you already use. Contribute from Future-bucket leftovers, not the Fund."
+        else:
+            summary = f"Locked. Roth waits until the Stability Fund is half full. You are at {picture['pct']:g}% (${picture['gap']:,.0f} to go to the full target)."
+            next_action = f"Do not open this yet. Fill the Fund first (${picture['gap']:,.0f} gap)."
+        path = [
+            _step("Learn: contributions (not growth) can come back out. That is why it sits after cash, before a taxable index fund."),
+            _step("Unlock: Stability Fund ≥ 50% of target."),
+            _step("Open at Fidelity, Vanguard, or similar. Pick a broad target-date or total-market fund. One fund is enough."),
+            _step("Stop at the annual cap. Overflow goes to SEP / Solo 401(k) or a brokerage index, not a hot stock."),
+        ]
+    elif tool_id == "treasury_bills":
+        summary = (
+            f"T-bills are for the slice of cash beyond 1 month of bills (${picture['month_of_bills']:,.0f}), "
+            "and only when the T-bill rate beats your HYSA after state tax."
+        )
+        next_action = gate if status != "now" else "Compare TreasuryDirect yield to your HYSA APY before moving a dollar."
+        path = [
+            _step("Learn: you are lending to the US for 4–52 weeks. Not a trade. Interest is state-tax free."),
+            _step("Keep 1 month of essentials in the HYSA for same-day cash."),
+            _step("If T-bill yield clearly beats HYSA after tax, ladder 4-week bills with the rest of the Fund."),
+        ]
+    elif tool_id == "sep_ira":
+        summary = "SEP is a one-form deduction for self-employed profit after the Fund is full — not a place to hide this month's tax bill."
+        next_action = gate if status != "now" else "Ask the brokerage which deadline applies for this tax year, then contribute from profit — not the Fund."
+        path = [
+            _step("Learn: SEP room is roughly 20% of net self-employment pay, capped. It does not replace quarterly 1040-ES."),
+            _step("Unlock: Stability Fund at 100% and you are self-employed."),
+            _step("Contribute after books close enough to know profit. Over-contributing is a mess."),
+        ]
+    elif tool_id == "solo_401k":
+        summary = "Solo 401(k) shelters more than a SEP at modest income if you have no employees besides a spouse."
+        next_action = gate if status != "now" else "Confirm you have no employees, then pick a provider and the employee-deferral deadline."
+        path = [
+            _step("Learn: you contribute as employee and employer. Setup can have a same-year deadline — ask before December."),
+            _step("Unlock: full Stability Fund + self-employed + no staff besides a spouse."),
+            _step("Do not raid it for a bet. Loans against it are a later conversation with a professional."),
+        ]
+    elif tool_id == "hsa":
+        summary = "An HSA is only legal with a high-deductible health plan. If you do not have one, skip this card."
+        next_action = "Check the insurance card: is this an HDHP? If no, this tool stays closed."
+        path = [
+            _step("Learn: deductible in, growth untaxed, medical withdrawals untaxed. Triple break — only with an HDHP."),
+            _step("If yes: open the HSA, fund it from Future after the cash Fund is moving, invest the balance you will not spend this year."),
+            _step("If no: do not open a fake HSA. Use the HYSA and Roth path instead."),
+        ]
+    elif tool_id == "index_fund":
+        summary = "A taxable total-market fund is last: after Fund, Roth, and (if self-employed) SEP/Solo room."
+        next_action = gate if status != "now" else "Open a brokerage taxable account. One total-market or S&P 500 fund. Automatic monthly buy."
+        path = [
+            _step("Learn: no contribution cap, but you pay tax on dividends and sales. That is why Roth comes first."),
+            _step("Unlock: Stability Fund 100%."),
+            _step("Buy and hold. This is not the bet wallet."),
+        ]
+
+    source_labels = {
+        "hysa": "Bankrate HYSA list",
+        "tax_bucket": "IRS estimated tax",
+        "debt_avalanche": "CFPB debt",
+        "roth_ira": "IRS IRA limits",
+        "treasury_bills": "TreasuryDirect",
+        "sep_ira": "IRS SEP / COLA",
+        "solo_401k": "IRS 401(k) limits",
+        "hsa": "IRS HSA limits",
+        "index_fund": "Investor.gov funds",
+    }
+    return {
+        **item,
+        "kind": "account",
+        "status": status,
+        "gate": gate,
+        "researched_on": RESEARCHED_ON,
+        "summary": summary,
+        "next_action": next_action,
+        "path": path,
+        "source_label": source_labels.get(tool_id, "Source"),
+        "lesson": "/static/learn.html",
+    }
+
+
 def toolbox(profile) -> list[dict[str, Any]]:
-    """Accounts that fit right now, what unlocks next, and what is not yet."""
+    """Accounts and habits that fit right now — each with a summary and an action path."""
     alloc = allocate_capital(profile)
     pct = alloc["stability_fund_pct"]
     self_employed = (profile.employment_type or "") == "self_employed"
@@ -923,7 +1229,7 @@ def toolbox(profile) -> list[dict[str, Any]]:
         "fund_100_self_employed": (pct >= 100 and self_employed, f"Self-employed + Stability Fund at 100% (now {pct:g}%)."),
         "hdhp": (False, "Only if your health plan is a high-deductible plan (HDHP)."),
     }
-    out = []
+    out = [_credit_repair_tool(profile)]
     for item in INSTRUMENTS:
         ok, reason = checks[item["unlock"]]
         if item["unlock"] == "hdhp":
@@ -934,7 +1240,7 @@ def toolbox(profile) -> list[dict[str, Any]]:
             status = "next"
         else:
             status = "later"
-        out.append({**item, "status": status, "gate": reason, "researched_on": RESEARCHED_ON})
+        out.append(_decorate_tool(profile, item, status, reason))
     return out
 
 

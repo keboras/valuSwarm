@@ -3,15 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Learn — Financial Literacy</title>
-  <link rel="stylesheet" href="/static/css/styles.css" />
+  <title>Learn — OmniWealth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/styles.css?v=ow6" />
 </head>
-<body>
-  <nav class="nav" id="nav"></nav>
+<body class="ow">
+  <aside class="ow-rail" id="nav" aria-label="OmniWealth stations"></aside>
   <main class="container">
     <header>
+      <p class="ow-kicker muted small">02 · Learn</p>
       <h1>Financial Literacy</h1>
-      <p class="muted">Built for self-employed operators — lessons, exercises, and a Wealth Playbook of mistakes vs strategies.</p>
+      <p class="muted">Lessons and a playbook for operators with variable income — not generic employee advice.</p>
     </header>
     <section class="card" id="playbook-section">
       <h2>Wealth Playbook</h2>
@@ -23,6 +27,6 @@
     <p id="error" class="error"></p>
     <div id="module-list"></div>
   </main>
-  <script type="module" src="/static/js/learn.js"></script>
+  <script type="module" src="/static/js/learn.js?v=5"></script>
 </body>
 </html>

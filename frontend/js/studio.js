@@ -1,4 +1,4 @@
-import { fetchJson, requireOnboarding, renderNav, formatEsbiInstructions } from "./app.js";
+import { fetchJson, requireOnboarding, mountShell, formatEsbiInstructions } from "./app.js?v=5";
 
 const AGENCY_PATH = "/Architect_Blueprint/get_response";
 const STUDIO_AGENT = "Orchestrator";
@@ -383,7 +383,7 @@ async function sendMessage(text) {
   await refreshArtifacts();
 }
 
-document.getElementById("nav").innerHTML = renderNav("studio");
+mountShell("studio");
 
 requireOnboarding().then(async () => {
   const statusEl = document.getElementById("studio-status");

@@ -1,4 +1,4 @@
-import { fetchJson, requireOnboarding, renderNav, formatMoney } from "./app.js";
+import { fetchJson, requireOnboarding, mountShell, formatMoney } from "./app.js?v=5";
 
 function escapeHtml(text) {
   return String(text)
@@ -179,7 +179,7 @@ async function initPlaybook() {
   await refresh(null, null);
 }
 
-document.getElementById("nav").innerHTML = renderNav("learn");
+mountShell("learn");
 
 requireOnboarding().then(async (profile) => {
   if (!profile) return;
