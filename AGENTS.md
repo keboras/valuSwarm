@@ -1,134 +1,62 @@
-# OpenSwarm — Customization Guide
+# valuSwarm — agent behaviour
 
-This file gives coding agents (Cursor, Claude Code, Codex, etc.) everything they need to understand and customize this swarm. Read it before making any changes.
+## Binding decisions
 
----
+Source: `C:\Users\kebor\Projects\Agentic WorkFlow\clients\agentic-workflow\systems\valuswarm\decision_register.md`
 
-## What is OpenSwarm?
+- `DEC-001` KEEP list (evidence labels, completeness distinct from a total, Level 4 human money-movement boundary, deterministic calculation, FACT update path)
+- `DEC-002` (COMPLETE is not known; verified only for FACT)
+- `DEC-007` (opportunity-cost comparison on a deployment-shaped move — still open whether valuSwarm packets must add it)
+- `DEC-008` (proof by fixture, never a live deal)
+- `DEC-014` valuSwarm is the product home
+- `DEC-015` this PC, one user, no accounts
+- `DEC-016` bind loopback only
+- `DEC-017` financial data never in git
+- `DEC-018` advisor is optional; one rulebook on saved state
+- `DEC-019` ICM operating spine
+- `DEC-020` Two-Key, kill answers, journal
+- `DEC-021` cheap upstream merges; start check before merge
+- `DEC-022` Command Center carries console gates
+- `DEC-023` Today is home
+- `DEC-024` governed folders (this spine)
+- `DEC-025` `.cursor/rules/agency-swarm-workflow.mdc` is `alwaysApply: false`
 
-OpenSwarm is a multi-agent AI team you can fork and reshape into any kind of swarm you need — SEO, sales, research, finance, customer support, or anything else. Each agent is a specialist. They collaborate through a shared orchestrator.
+## Daily start (S-01)
 
----
+From a fresh Windows terminal in this repository:
 
-## Folder Structure
-
-```
-swarm.py                  ← main config: imports all agents, defines how they connect
-shared_instructions.md    ← context shared across every agent
-run.py                    ← CLI entry point (terminal demo)
-server.py                 ← API entry point (FastAPI server)
-
-orchestrator/
-  orchestrator.py         ← agent definition
-  instructions.md         ← system prompt
-
-data_analyst_agent/
-  data_analyst_agent.py
-  instructions.md
-  tools/                  ← custom tools for this agent
-
-docs_agent/
-  docs_agent.py
-  instructions.md
-  tools/
-
-slides_agent/
-  slides_agent.py
-  instructions.md
-  tools/
-
-image_generation_agent/
-  image_generation_agent.py
-  instructions.md
-  tools/
-
-video_generation_agent/
-  video_generation_agent.py
-  instructions.md
-  tools/
-
-deep_research/
-  deep_research.py
-  instructions.md
-  tools/
-
-virtual_assistant/
-  virtual_assistant.py
-  instructions.md
-  tools/
-
-shared_tools/             ← tools available to all agents (Composio integrations, etc.)
+```text
+start.bat
 ```
 
----
+That runs `python run_mechanical.py`. No model key is required. Open `http://localhost:8090/`. Health: `GET /health/mechanical`.
 
-## How Agents Connect (`swarm.py`)
+Full advisor (optional): `python server.py` after a model key is set. If the advisor fails to load, the web app still starts.
 
-`swarm.py` is the only file you need to edit when adding, removing, or rewiring agents. It:
+## Start check before any upstream merge (S-03)
 
-1. Imports a `create_*` factory function from each agent folder
-2. Instantiates all agents
-3. Defines communication flows — who can talk to whom
+```text
+python -c "from financial_swarm import create_agency; from backend.app import create_mechanical_app; create_mechanical_app(); create_agency()"
+```
 
-The default pattern is **orchestrator-to-all**: the orchestrator can send messages to every specialist, and all agents can hand off to each other.
+This must import and build the agency without calling a model. If it raises, do not merge upstream.
 
----
+## Reasoning
 
-## How to Customize
+- Responsibility before mechanism. Saved state is the only figure source for verdicts, allocation, and net worth.
+- A preview that was not confirmed did not happen.
+- COMPLETE means the schema has values. It does not mean the figures are known.
+- The advisor never writes the profile, never commits, never closes a move, and never computes a verdict from typed income.
 
-To build your own swarm from this repo:
+## WAT
 
-1. **Fork and rename** the repo (e.g., `seo-swarm`)
-2. **Decide which agents to keep, rename, or replace**
-   - Rename the folder and its files to match the new agent's purpose
-   - Update `instructions.md` with the new system prompt
-   - Update `swarm.py` to import and register the renamed agent
-3. **Add or remove tools** inside each agent's `tools/` folder
-4. **Update `shared_instructions.md`** with any context all agents should share
-5. **Run** with `python run.py`
+- **Workflows:** intake (onboarding), Today (route money, mark done), underwrite → kill answers → commit → journal, weekly review. Repeatable steps live in the UI and `backend/services/omni_wealth.py`, not in this file.
+- **Agents:** the 15 financial agents in this repo, plus optional Studio specialists. They reason and route. They do not move money.
+- **Tools:** only `UnderwriteSmartMove`, `BuildKillCase`, and `AllocateCapitalWaterfall` are available to the advisor. They read user `default` through the service layer. Other tool files are in `tools_held/`. Classification: `backend/advisor_tool_classification.md`.
 
-### Example prompt to give your coding agent
+## Execution rules
 
-> "Turn this into an SEO optimization swarm. The Research Agent becomes an SEO Keyword Planner, the Docs Agent becomes a Blog Post Writer, the Data Analyst becomes an SEO Analytics Agent (Google Search Console + GA4), and the General Agent handles technical SEO like schema markup and site audits. Keep the orchestrator and shared tools as-is."
-
-The coding agent will read this file, understand the structure, and make the right changes automatically.
-
----
-
-## Current Agents
-
-| Agent | Purpose |
-|---|---|
-| `orchestrator` | Routes tasks to the right specialist |
-| `architect_orchestrator` | Wealth routing + two-key smart-move gates |
-| `opportunity_scanner` | Flips, velocity, underwrite bull case |
-| `risk_officer` | Kill case — tries to break the bet |
-| `capital_allocator` | Surplus pools + risk budget |
-| `virtual_assistant` | Email, calendar, Slack, file management |
-| `deep_research` | Web research and synthesis |
-| `data_analyst_agent` | Data analysis, visualization, statistical modeling |
-| `docs_agent` | Document creation and editing |
-| `slides_agent` | PowerPoint / HTML slide generation |
-| `image_generation_agent` | AI image generation and editing |
-| `video_generation_agent` | AI video generation and editing |
-
----
-
-## Key Conventions
-
-- Each agent folder has one `<name>.py` file and one `instructions.md`
-- `instructions.md` is the agent's system prompt — edit it to change behavior
-- Tools live in `tools/` and are auto-loaded by the agent definition
-- `shared_tools/` contains Composio-powered integrations (Gmail, Slack, GitHub, etc.) available to all agents
-- Models are configured via `DEFAULT_MODEL` in `.env` — never hardcoded
-
-Before proceeding with agent creation, please read the following instructions carefully:
-
-- `.cursor/rules/agency-swarm-workflow.mdc` - your primary guide for creating agents and agencies
-
-The following files can be read on demand, depending on the task at hand:
-
-- `.cursor/commands/add-mcp.md` - how to add MCP servers to an agent
-- `.cursor/commands/mcp-code-exec.md` - how to convert an MCP server into the Code Execution Pattern (progressive tool disclosure, 98% token reduction)
-- `.cursor/commands/write-instructions.md` - how to write effective instructions for AI agents
-- `.cursor/commands/create-prd.md` - how to create a PRD for an agent (use for complex multi agent systems)
+- Bind `127.0.0.1` only.
+- Never commit `*.db`, uploads, or vault files.
+- Tests must use a throwaway database (`tests/conftest.py`).
+- Do not copy Capability Packs into this spine. Point at them.

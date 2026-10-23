@@ -337,13 +337,31 @@ function showUnderwrite(packet) {
 async function loadOmniWealth() {
   const data = await fetchJson("/wealth/command");
   renderOmni(data);
+  try {
+    const weekly = await fetchJson("/wealth/weekly-review");
+    const el = document.getElementById("weekly-review-list");
+    if (el) {
+      el.innerHTML = (weekly.this_week || []).map((item) => `<li>${esc(item)}</li>`).join("");
+    }
+  } catch {
+    /* weekly review fills after intake exists */
+  }
 }
 
 async function commitMove(moveId) {
+  const data = await fetchJson("/wealth/command");
+  const move = (data.moves || []).find((m) => m.move_id === moveId);
+  const reasons = (move?.packet?.kill_case?.reasons) || move?.kill_case?.reasons || [];
+  const kill_answers = {};
+  for (let i = 0; i < reasons.length; i += 1) {
+    const ans = prompt(`Kill reason ${i + 1}: ${reasons[i]}\nType "accepted" or why it does not apply:`);
+    if (ans == null) return;
+    kill_answers[String(i)] = ans;
+  }
   if (!confirm("Confirm you accept the max loss and already (or will immediately) follow the playbook. This does not send money.")) return;
   await fetchJson("/wealth/moves/commit", {
     method: "POST",
-    body: JSON.stringify({ move_id: moveId, confirm_max_loss: true }),
+    body: JSON.stringify({ move_id: moveId, confirm_max_loss: true, kill_answers }),
   });
   await loadOmniWealth();
 }
@@ -407,6 +425,7 @@ function renderToday(data) {
       </article>`
     )
     .join("");
+  document.dispatchEvent(new CustomEvent("today:ready", { detail: data }));
 }
 
 async function loadToday() {
@@ -415,9 +434,19 @@ async function loadToday() {
 
 async function markRouteDone(btn) {
   btn.disabled = true;
+  const preview = await fetchJson("/wealth/inflow/done", {
+    method: "POST",
+    body: JSON.stringify({ inflow_id: btn.dataset.id, key: btn.dataset.key, confirm: false }),
+  });
+  const d = preview.diff || {};
+  const ok = confirm(`This will change saved figures:\n${JSON.stringify(d, null, 2)}\nConfirm?`);
+  if (!ok) {
+    btn.disabled = false;
+    return;
+  }
   const res = await fetchJson("/wealth/inflow/done", {
     method: "POST",
-    body: JSON.stringify({ inflow_id: btn.dataset.id, key: btn.dataset.key }),
+    body: JSON.stringify({ inflow_id: btn.dataset.id, key: btn.dataset.key, confirm: true }),
   });
   renderToday(res.today);
   if (["fund", "invest"].includes(btn.dataset.key)) await loadOmniWealth();
@@ -576,7 +605,9 @@ requireOnboarding().then(async (profile) => {
     for (const [k, v] of fd.entries()) {
       if (v !== "") body[k] = Number(v);
     }
-    const data = await fetchJson("/wealth/state", { method: "POST", body: JSON.stringify(body) });
+    const preview = await fetchJson("/wealth/state", { method: "POST", body: JSON.stringify({ ...body, confirm: false }) });
+    if (preview.needs_confirm && !confirm(`Save these figure changes?\n${JSON.stringify(preview.diff, null, 2)}`)) return;
+    const data = await fetchJson("/wealth/state", { method: "POST", body: JSON.stringify({ ...body, confirm: true }) });
     renderOmni(data);
   });
 
@@ -619,7 +650,7 @@ requireOnboarding().then(async (profile) => {
 
   document.getElementById("reset-profile").onclick = async () => {
     if (!confirm("Clear all your data and start intake again?")) return;
-    await fetchJson("/user/intake/reset", { method: "POST" });
+    await fetchJson("/user/intake/reset?confirm=true", { method: "POST" });
     window.location.href = "/static/get-started.html";
   };
 

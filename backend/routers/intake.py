@@ -146,12 +146,15 @@ def save_intake_step(
     step: int,
     body: dict,
     user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     if step not in STEP_SCHEMAS and not (2 <= step <= 6 and _is_legacy_payload(step, body)):
         raise HTTPException(status_code=404, detail="Invalid intake step")
 
     profile = _get_or_create(db, user_id)
+    if not confirm:
+        return {"needs_confirm": True, "diff": {"step": step, "body": body}, "saved": False}
 
     if _is_legacy_payload(step, body):
         _apply_legacy_step(profile, step, body)
@@ -176,8 +179,11 @@ def save_intake_step(
 def complete_intake(
     body: IntakeComplete,
     user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
+    if not confirm:
+        return {"needs_confirm": True, "diff": body.model_dump()}
     profile = _get_or_create(db, user_id)
     if (profile.intake_step or 0) < 7:
         raise HTTPException(status_code=400, detail="Complete steps 1–7 before signing the contract")
@@ -223,7 +229,13 @@ def complete_intake(
 
 
 @router.post("/reset")
-def reset_intake(user_id: str = Query(default="default"), db: Session = Depends(get_db)):
+def reset_intake(
+    user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
+    db: Session = Depends(get_db),
+):
+    if not confirm:
+        return {"needs_confirm": True, "diff": {"action": "delete_profile", "user_id": user_id}}
     profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
     if profile:
         db.delete(profile)

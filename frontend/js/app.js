@@ -9,6 +9,9 @@ export async function fetchJson(path, options = {}) {
   });
   if (!res.ok) {
     const text = await res.text();
+    if (/traceback/i.test(text) || text.includes('File "') || text.includes("File '")) {
+      throw new Error("Something went wrong. Try again.");
+    }
     throw new Error(text || res.statusText);
   }
   return res.json();

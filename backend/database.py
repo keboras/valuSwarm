@@ -65,6 +65,8 @@ def _migrate_sqlite_columns():
             ("north_star_json", "TEXT DEFAULT '{}'"),
             ("opportunities_json", "TEXT DEFAULT '[]'"),
             ("inflows_json", "TEXT DEFAULT '[]'"),
+            ("journal_json", "TEXT DEFAULT '[]'"),
+            ("figure_grades_json", "TEXT DEFAULT '{}'"),
         ],
     }
     with engine.connect() as conn:

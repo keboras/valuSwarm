@@ -45,6 +45,8 @@ class UserProfile(Base):
     north_star_json: Mapped[str] = mapped_column(Text, default="{}")
     opportunities_json: Mapped[str] = mapped_column(Text, default="[]")
     inflows_json: Mapped[str] = mapped_column(Text, default="[]")
+    journal_json: Mapped[str] = mapped_column(Text, default="[]")
+    figure_grades_json: Mapped[str] = mapped_column(Text, default="{}")
     contract_signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     audit_json: Mapped[str] = mapped_column(Text, default="{}")
     footprints_json: Mapped[str] = mapped_column(Text, default="{}")

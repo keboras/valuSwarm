@@ -60,8 +60,11 @@ def get_profile(user_id: str = Query(default="default"), db: Session = Depends(g
 def complete_onboarding(
     body: OnboardingComplete,
     user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
+    if not confirm:
+        return {"needs_confirm": True, "diff": body.model_dump()}
     profile = _get_or_create_profile(db, user_id)
     profile.display_name = body.display_name
     profile.primary_trade = body.primary_trade
@@ -95,12 +98,16 @@ def complete_onboarding(
 def update_profile(
     body: ProfileUpdate,
     user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     profile = _get_or_create_profile(db, user_id)
     if not profile.onboarding_completed:
         raise HTTPException(status_code=400, detail="Complete onboarding first")
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    if not confirm:
+        return {"needs_confirm": True, "diff": updates}
+    for field, value in updates.items():
         setattr(profile, field, value)
     db.commit()
     return get_profile(user_id=user_id, db=db)
@@ -228,8 +235,11 @@ def acknowledge_patterns(
 def sign_architect_contract(
     body: ContractSign,
     user_id: str = Query(default="default"),
+    confirm: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
+    if not confirm:
+        return {"needs_confirm": True, "diff": body.model_dump()}
     profile = _get_or_create_profile(db, user_id)
     footprints = json.loads(profile.footprints_json or "{}")
     audit = generate_clinical_audit(

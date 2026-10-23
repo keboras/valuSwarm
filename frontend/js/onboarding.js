@@ -233,10 +233,16 @@ function formData(form) {
 }
 
 async function saveStep(n, body) {
-  const res = await fetchJson(`/user/intake/step/${n}`, {
+  const previewReq = await fetchJson(`/user/intake/step/${n}`, {
     method: "POST",
     body: JSON.stringify(body),
   });
+  const res = previewReq.needs_confirm
+    ? await fetchJson(`/user/intake/step/${n}?confirm=true`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+    : previewReq;
   if (res.preview) {
     const p = res.preview;
     document.getElementById("preview-box").classList.remove("hidden");
@@ -448,10 +454,16 @@ document.getElementById("btn-next").onclick = async () => {
       document.getElementById("error").textContent = "Sign the contract to continue.";
       return;
     }
-    const result = await fetchJson("/user/intake/complete", {
+    const preview = await fetchJson("/user/intake/complete", {
       method: "POST",
       body: JSON.stringify({ display_name: "Architect", focus_season_months: 6 }),
     });
+    const result = preview.needs_confirm
+      ? await fetchJson("/user/intake/complete?confirm=true", {
+          method: "POST",
+          body: JSON.stringify({ display_name: "Architect", focus_season_months: 6 }),
+        })
+      : preview;
     sessionStorage.setItem("welcome_message", result.identity_notification);
     window.location.href = "/static/index.html";
   } catch (e) {

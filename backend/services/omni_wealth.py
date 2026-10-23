@@ -62,9 +62,29 @@ def _money(n: float) -> float:
     return round(float(n or 0), 2)
 
 
+EVIDENCE_LABELS = ("FACT", "ASSUMPTION", "ESTIMATE", "FORECAST", "OPINION", "UNKNOWN")
+
+
+def _figure(stored: dict, key: str, default, *, default_grade: str, as_of: str, grades: dict) -> tuple[float, str]:
+    raw = stored.get(key, default)
+    if isinstance(raw, dict):
+        value = _money(raw.get("value", default))
+        grade = raw.get("grade") or default_grade
+    else:
+        value = _money(raw)
+        grade = (grades.get(key) or {}).get("grade") or default_grade
+    if key not in stored:
+        grade = default_grade
+    if grade == "FACT" and key not in stored:
+        grade = default_grade
+    return value, grade
+
+
 def build_net_worth(profile) -> dict[str, Any]:
     """Combine intake numbers + optional wealth_state_json into a net-worth picture."""
     stored = _loads(getattr(profile, "wealth_state_json", None), {})
+    grades = _loads(getattr(profile, "figure_grades_json", None), {})
+    as_of = stored.get("as_of") or _now_iso()[:10]
     debts = _loads(profile.debts_json, [])
     debt_total = _money(sum(float(d.get("balance") or 0) for d in debts if isinstance(d, dict)))
     credit = _loads(profile.credit_snapshot_json, {})
@@ -73,16 +93,22 @@ def build_net_worth(profile) -> dict[str, Any]:
         sum(float(c.get("balance") or 0) for c in collections if isinstance(c, dict))
     )
 
-    cash = _money(stored.get("cash", profile.stability_fund_balance or 0))
-    business_cash = _money(stored.get("business_accounts", 0))
-    productive = _money(stored.get("productive_assets", 0))
-    investments = _money(stored.get("investments", 0))
-    receivables = _money(stored.get("receivables", 0))
-    business_equity = _money(stored.get("business_equity", 0))
-    other_assets = _money(stored.get("other_assets", 0))
-    loans = _money(stored.get("loans", debt_total))
-    tax_owed = _money(stored.get("tax_liabilities", 0))
-    other_liabilities = _money(stored.get("other_liabilities", collections_total))
+    cash, cash_g = _figure(stored, "cash", profile.stability_fund_balance or 0, default_grade="ESTIMATE", as_of=as_of, grades=grades)
+    if "cash" not in stored:
+        cash_g = "ESTIMATE"
+    business_cash, bus_g = _figure(stored, "business_accounts", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    productive, prod_g = _figure(stored, "productive_assets", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    investments, inv_g = _figure(stored, "investments", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    receivables, rec_g = _figure(stored, "receivables", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    business_equity, eq_g = _figure(stored, "business_equity", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    other_assets, oth_g = _figure(stored, "other_assets", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    loans, loan_g = _figure(stored, "loans", debt_total, default_grade="ESTIMATE", as_of=as_of, grades=grades)
+    if "loans" not in stored:
+        loan_g = "ESTIMATE"
+    tax_owed, tax_g = _figure(stored, "tax_liabilities", 0, default_grade="UNKNOWN", as_of=as_of, grades=grades)
+    other_liabilities, liab_g = _figure(stored, "other_liabilities", collections_total, default_grade="ESTIMATE", as_of=as_of, grades=grades)
+    if "other_liabilities" not in stored:
+        liab_g = "ESTIMATE"
 
     assets = cash + business_cash + productive + investments + receivables + business_equity + other_assets
     liabilities = loans + tax_owed + other_liabilities
@@ -97,6 +123,10 @@ def build_net_worth(profile) -> dict[str, Any]:
     status = "INCOMPLETE" if missing else "COMPLETE"
     return {
         "status": status,
+        "completeness_note": (
+            "COMPLETE means every required field has a value. "
+            "It does not mean the figures are known, verified, or FACT."
+        ),
         "missing": missing,
         "assets": {
             "cash": cash,
@@ -115,11 +145,23 @@ def build_net_worth(profile) -> dict[str, Any]:
             "total": _money(liabilities),
         },
         "net_worth": net,
-        "as_of": stored.get("as_of") or _now_iso()[:10],
+        "as_of": as_of,
+        "grades": {
+            "cash": {"grade": cash_g, "as_of": as_of},
+            "business_accounts": {"grade": bus_g, "as_of": as_of},
+            "productive_assets": {"grade": prod_g, "as_of": as_of},
+            "investments": {"grade": inv_g, "as_of": as_of},
+            "receivables": {"grade": rec_g, "as_of": as_of},
+            "business_equity": {"grade": eq_g, "as_of": as_of},
+            "other_assets": {"grade": oth_g, "as_of": as_of},
+            "loans_and_cards": {"grade": loan_g, "as_of": as_of},
+            "tax_liabilities": {"grade": tax_g, "as_of": as_of},
+            "other_liabilities": {"grade": liab_g, "as_of": as_of},
+        },
         "note": (
-            "Incomplete is OK — we still guide you. Fill missing asset values when you can."
+            "Incomplete is OK — we still guide you. Fill missing asset values when you can. COMPLETE does not mean the figures are known."
             if missing
-            else "Baseline is complete enough to underwrite moves."
+            else "Baseline is complete enough to underwrite moves. COMPLETE does not mean the figures are known."
         ),
     }
 
@@ -412,20 +454,48 @@ def evaluate_move(profile, move: dict[str, Any]) -> dict[str, Any]:
         # still never let max_loss raid more than 1.25x budget even with override
 
     can_commit = verdict in ("BUY", "TEST", "ESCALATE")
+    answers = move.get("kill_answers") or {}
+    reasons = kill.get("reasons") or []
+    two_key_complete = bool(answers) and all(str(answers.get(str(i), "")).strip() for i in range(len(reasons)))
+    fund = _money(getattr(profile, "stability_fund_balance", 0) or 0)
+    stability_fund_untouched = kill["max_loss"] <= max(0.0, allocation["risk_budget"]) + 0.01 and kill["max_loss"] <= fund + allocation["risk_budget"] + 0.01
+    # A bet leaves the Stability Fund untouched when max loss is paid from the risk budget, not the fund.
+    stability_fund_untouched = kill["max_loss"] <= allocation["risk_budget"] + 0.01
+    nw = build_net_worth(profile)
+    figure_grades = {
+        "risk_budget": {"grade": "ESTIMATE", "as_of": nw["as_of"], "source": "allocate_capital"},
+        "max_loss": {"grade": move.get("max_loss_grade") or "ESTIMATE", "as_of": nw["as_of"]},
+        "stability_fund_balance": {"grade": "ESTIMATE", "as_of": nw["as_of"]},
+        "monthly_gross_income": {"grade": "ESTIMATE", "as_of": nw["as_of"]},
+        "monthly_essentials": {"grade": "ESTIMATE", "as_of": nw["as_of"]},
+    }
+    for k, meta in (nw.get("grades") or {}).items():
+        if meta.get("grade") == "FACT":
+            figure_grades[k] = meta
+        else:
+            figure_grades.setdefault(k, meta)
     return {
         "move_id": move.get("move_id") or str(uuid.uuid4()),
         "name": move.get("name") or "Untitled move",
         "move_type": move_type,
         "platform": move.get("platform") or "",
         "capital_required": _money(move.get("capital_required") or move.get("capital") or 0),
+        "expected_profit": _money(move.get("expected_profit") or 0),
+        "bull_why": move.get("bull_why") or "",
+        "seller_claim": bool(move.get("seller_claim")),
+        "independent_evidence": bool(move.get("independent_evidence")),
+        "exit_plan": move.get("exit_plan") or "",
+        "recycle_days": int(move.get("recycle_days") or 30),
         "verdict": verdict,
         "can_commit": can_commit,
+        "kill_answers": answers,
+        "figure_grades": figure_grades,
         "assurance": {
             "risk_budget": allocation["risk_budget"],
             "max_loss": kill["max_loss"],
             "within_budget": kill["max_loss"] <= allocation["risk_budget"] + 0.01,
-            "stability_fund_untouched": True,
-            "two_key_complete": True,
+            "stability_fund_untouched": stability_fund_untouched,
+            "two_key_complete": two_key_complete,
         },
         "bull_case": bull,
         "kill_case": kill,
@@ -456,12 +526,21 @@ def upsert_move(profile, packet: dict[str, Any], *, status: str = "underwritten"
         "verdict": packet["verdict"],
         "status": status,
         "capital_required": packet["capital_required"],
+        "expected_profit": packet.get("expected_profit"),
+        "bull_why": packet.get("bull_why"),
+        "seller_claim": packet.get("seller_claim"),
+        "independent_evidence": packet.get("independent_evidence"),
+        "exit_plan": packet.get("exit_plan"),
+        "recycle_days": packet.get("recycle_days") or packet.get("monitor", {}).get("recycle_days"),
         "max_loss": packet["assurance"]["max_loss"],
+        "kill_answers": packet.get("kill_answers") or {},
+        "figure_grades": packet.get("figure_grades") or {},
         "review_by": packet["monitor"]["review_by"],
         "playbook": packet.get("playbook") or [],
         "updated_at": _now_iso(),
         "committed_at": packet.get("committed_at"),
         "result": packet.get("result"),
+        "packet": packet,
     }
     found = False
     for i, existing in enumerate(moves):
@@ -786,7 +865,7 @@ def save_inflow(profile, flow: dict[str, Any]) -> list[dict[str, Any]]:
     return inflows
 
 
-def mark_route_done(profile, inflow_id: str, key: str) -> dict[str, Any] | None:
+def mark_route_done(profile, inflow_id: str, key: str, *, apply: bool = True) -> dict[str, Any] | None:
     """User confirms they moved the money. Fund and invest routes update balances."""
     inflows = list_inflows(profile)
     for flow in inflows:
@@ -795,17 +874,39 @@ def mark_route_done(profile, inflow_id: str, key: str) -> dict[str, Any] | None:
         for route in flow.get("routes", []):
             if route["key"] != key or route.get("done"):
                 continue
+            preview = {
+                "inflow_id": inflow_id,
+                "key": key,
+                "amount": route.get("amount"),
+                "stability_fund_before": profile.stability_fund_balance,
+            }
+            if not apply:
+                return {**flow, "preview": preview, "needs_confirm": True}
             route["done"] = True
             route["done_at"] = _now_iso()
             if key == "fund":
                 profile.stability_fund_balance = _money((profile.stability_fund_balance or 0) + route["amount"])
             elif key == "invest":
                 state = _loads(profile.wealth_state_json, {})
-                state["investments"] = _money(float(state.get("investments") or 0) + route["amount"])
+                raw = state.get("investments") or 0
+                if isinstance(raw, dict):
+                    raw = raw.get("value") or 0
+                state["investments"] = _money(float(raw) + route["amount"])
                 profile.wealth_state_json = json.dumps(state)
             profile.inflows_json = json.dumps(inflows)
             return flow
     return None
+
+
+def append_journal(profile, entry: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = _loads(getattr(profile, "journal_json", None), [])
+    rows.append(entry)
+    profile.journal_json = json.dumps(rows[-400:])
+    return rows
+
+
+def list_journal(profile) -> list[dict[str, Any]]:
+    return _loads(getattr(profile, "journal_json", None), [])
 
 
 def toolbox(profile) -> list[dict[str, Any]]:

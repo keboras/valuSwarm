@@ -19,9 +19,12 @@
 - **Communication Flows:**
   - **Between Agents:**
     - **Mandatory Stage Sequence:** Stability → Skill Stacking → Asset Acquisition → Sovereignty. No stage skipping.
-    - **Architect Orchestrator** receives all requests, assesses stage, enforces gates, routes to one of six specialists.
-    - **Sequential onboarding pipeline:** Orchestrator → Cash Flow Engineer (15/65/20 + Stability Fund) → Behavioral Mirror (pause rules + invisible transactions) → Opportunity Scanner (when Stability Fund ≥ 3 months) → Leverage Strategist (when spread-positive assets identified) → Reputation Validator (when external providers engaged) → Legacy Architect (Sovereignty stage or net worth threshold).
-    - **Financial Analyst** is a cross-cutting support agent for Velocity Tracker, Reputation Credit Dashboard, Silent Dashboard, and Plaid categorization feeds.
+    - **Entry agents:** **Architect Orchestrator** (wealth, stage, gates) and **Studio Orchestrator** (docs, slides, images, video). Each can message every specialist; every agent can hand off to every other (`financial_swarm.py`).
+    - **Core specialists:** Behavioral Mirror, Cash Flow Engineer, Opportunity Scanner, **Risk Officer**, **Capital Allocator**, Leverage Strategist, Reputation Validator, Legacy Architect.
+    - **Wealth support:** Financial Analyst, Tax Strategist, Discipline Controller, Arbitrage Scout, Wealth Architect.
+    - **Content specialists (via Studio Orchestrator):** Docs Agent, Slides Agent, Image Generation Agent, Video Generation Agent.
+    - **Sequential onboarding pipeline:** Orchestrator → Cash Flow Engineer (15/65/20 + Stability Fund) → Behavioral Mirror (pause rules + invisible transactions) → Opportunity Scanner (when Stability Fund ≥ 3 months) → Risk Officer + Capital Allocator (Smart Moves, pools) → Leverage Strategist (when spread-positive assets identified) → Reputation Validator (when external providers engaged) → Legacy Architect (Sovereignty stage or net worth threshold).
+    - **Financial Analyst** is cross-cutting: Velocity Tracker, Reputation Credit Dashboard, Command Center feeds, Plaid categorization.
     - **Example Flow — Stability Fund:**
       - **User → Architect Orchestrator:** "I earn $7,200/month but have no cushion."
       - **Orchestrator → Cash Flow Engineer:** Assign dollar jobs via 15/65/20; calculate Stability Fund target (3–6 months essentials).
@@ -33,11 +36,16 @@
       - **Opportunity Scanner → Leverage Strategist:** Validate spread on shortlisted projects.
       - **Leverage Strategist → Reputation Validator:** Vet service providers for behavioral trust.
       - **Opportunity Scanner → User:** Ranked micro-investment projects with 1–7 day payout profiles.
+    - **Example Flow — Money came in (daily router):**
+      - **User → Command Center:** Logs deposit (amount, source, kind) via `POST /wealth/inflow`.
+      - **OmniWealth engine:** Tax set-aside first (business/side income), then unpaid essentials this month, then remainder split by risk mode (fund / debt / invest / life / bet).
+      - **User:** Moves money in real accounts; taps **Moved it** per slice (`POST /wealth/inflow/done`) — fund and invest slices update profile balances.
+      - **Capital Allocator / Tax Strategist (chat):** Explain toolbox unlocks (HYSA, Roth, SEP, etc.) when user asks.
 
   - **Agent to User Communication:**
-    - Chat-first via Agency Swarm TUI/API.
+    - Chat-first via Agency Swarm TUI/API; **Command Center** at `/static/index.html` for numbers, daily routing, Smart Moves, and toolbox.
     - **Identity-Based Notifications** only—never goal-based alerts (e.g., "You are an architect who protects their future" not "You saved $50").
-    - **Friction-Based UX:** Gated modules unlock by stage; pre-gate modules remain intentionally invisible.
+    - **Friction-Based UX:** Gated modules unlock by stage and Stability Fund %; locked tools show as **Next unlock** / **Later** with the exact condition (not hidden teasers).
     - **Solitude Mode:** 6-Month Focus Season flag suppresses non-essential agent prompts and consumption-oriented features.
     - Deliverables saved to agent `files/` folders with explicit paths.
 
@@ -243,6 +251,46 @@ Scans five **Invisible Gaps**: Convenience, Information, Connection, Skill, and 
     - project_data (dict, optional)
   - **Output**: JSON pipeline sorted by Money Velocity
 
+- **UnderwriteSmartMove:**
+  - **Description**: Builds bull case for a flip, trade, crypto, Kalshi, or business reinvest idea; pairs with Risk Officer kill case and `/wealth/moves/underwrite` API.
+  - **Inputs**: name, move_type, capital_required, expected_profit, max_loss, recycle_days, exit_plan
+  - **Output**: JSON underwriting packet for Smart Moves workflow
+
+---
+
+## Risk Officer (Kill Case Agent)
+
+### Role within the Agency
+
+Tries to **break the bet** before capital moves. Surfaces max loss, missing exit plan, and budget violations. Never places trades or moves money.
+
+### Tools
+
+- **BuildKillCase:**
+  - **Description**: Computes kill verdict reasons against risk budget and Stability Fund rules.
+  - **Inputs**: move name, move_type, capital_required, max_loss, recycle_days, exit_plan, risk_budget
+  - **Output**: JSON kill case with reasons and suggested verdict (REJECT / WAIT / TEST)
+
+---
+
+## Capital Allocator (Pool Agent)
+
+### Role within the Agency
+
+Assigns surplus to capital pools and states the **risk budget** (max plausible loss this month). Runs after bull + kill cases; never raids the Stability Fund for bets.
+
+### Tools
+
+- **AllocateCapitalWaterfall:**
+  - **Description**: Computes pools (survival, tax, reserve, opportunity, growth, investment, speculative) and mode (seed / measured / deploy) from fund %.
+  - **Inputs**: monthly_gross_income, monthly_essentials, stability_fund_balance, stability_fund_target_months
+  - **Output**: JSON allocation with risk_budget and pool amounts
+
+- **CompareReinvestment:**
+  - **Description**: Compares internal business reinvest vs external bet over N days.
+  - **Inputs**: capital, internal_return_pct, external_return_pct, days, track_record
+  - **Output**: JSON winner and rationale (mirrors `/wealth/reinvest/compare`)
+
 ---
 
 ## Leverage Strategist (Mathematical Agent)
@@ -438,6 +486,75 @@ Cross-cutting analyst. Builds **Velocity Tracker**, **Reputation Credit Dashboar
 
 ---
 
+## Tax Strategist (Self-Employment Tax Agent)
+
+### Role within the Agency
+
+Estimates self-employment tax, quarterly 1040-ES schedules, and deduction audits. Ensures tax reserves are funded before aggressive wealth moves.
+
+### Tools
+
+- **CalculateSelfEmploymentTax**
+- **GenerateQuarterlyEstimateSchedule**
+- **AuditSelfEmployedDeductions**
+
+---
+
+## Wealth Architect (Long-Term Accounts Agent)
+
+### Role within the Agency
+
+Compares retirement and brokerage options for self-employed users; projects sovereignty number; drafts investment policy by stage.
+
+### Tools
+
+- **CompareRetirementAccounts**
+- **ProjectSovereigntyNumber**
+- **BuildInvestmentPolicyStatement**
+
+---
+
+## Arbitrage Scout (Vendor Arbitrage Agent)
+
+### Role within the Agency
+
+Hunts pricing and vendor arbitrage with velocity scoring; maintains a ranked pipeline when stage gates allow.
+
+### Tools
+
+- **ScanVendorPricingArbitrage**
+- **ScoreOpportunityVelocity**
+- **TrackArbitragePipeline**
+
+---
+
+## Discipline Controller (Profit-First Agent)
+
+### Role within the Agency
+
+Mechanical enforcer: Profit First splits, runway, expense validation against stage rules.
+
+### Tools
+
+- **EnforceProfitFirstAllocation**
+- **CalculateCashRunway**
+- **ValidateExpenseAgainstRules**
+- **CreateDisciplineProtocol**
+
+---
+
+## Studio Orchestrator (Content Routing Agent)
+
+### Role within the Agency
+
+Entry agent for **deliverables only**—routes to Docs, Slides, Image, or Video agents. Does not coach tax, debt, or wealth stages.
+
+### Tools
+
+- None in `studio_orchestrator/tools/`; routing and handoffs only.
+
+---
+
 ## Core Platform Features
 
 ### Velocity Tracker
@@ -455,14 +572,54 @@ Cross-cutting analyst. Builds **Velocity Tracker**, **Reputation Credit Dashboar
 |--------|------------|
 | Stability Fund automation | Stage: Stability (entry) |
 | 72-Hour Pause | Stage: Stability |
+| Daily money router + tax HYSA | Stage: Stability (entry) |
 | Invisible Gap Scanner | Stability Fund ≥ 3 months |
 | Micro-Investment Projects | Stage: Skill Stacking |
 | Spread Calculator | Stage: Asset Acquisition |
+| Roth IRA / T-bills (toolbox) | Stability Fund ≥ 50% of target |
+| SEP IRA / Solo 401(k) / index fund (toolbox) | Stability Fund ≥ 100% + self-employed where applicable |
+| Bet limit **seed** / **measured** / **deploy** | Fund < 50% / 50–99% / ≥ 100% |
 | Buy-Borrow-Die Vault | Stage: Sovereignty |
 
 ### Debt Snowball for Assets
 - Targets debt APR > 7–8% using spread surplus as guaranteed return.
 - Owned by Cash Flow Engineer; validated by Leverage Strategist.
+
+### OmniWealth Engine (`backend/services/omni_wealth.py`)
+
+Implemented in FastAPI router `backend/routers/omni.py` (prefix `/wealth`). **No endpoint moves money**—outputs checklists; user confirms execution.
+
+#### Risk modes (Stability Fund % of target)
+| Mode | Fund % | Speculative cap (max single loss) |
+|------|--------|-----------------------------------|
+| **seed** | < 50% | min(surplus × 10%, income × 3%, $250) |
+| **measured** | 50–99% | min(surplus × 20%, future × 40%, $750) |
+| **deploy** | ≥ 100% | min(surplus × 35%, future × 60%, $2,500) |
+
+- **Rule:** Stability Fund is never the source of a bet. `risk_budget` = speculative pool after caps.
+
+#### Smart Moves (two-key underwriting)
+- Move types: flip, trade, crypto, kalshi, business_reinvest, equipment, acquisition, other.
+- **Bull case** (Opportunity Scanner / underwrite) + **kill case** (Risk Officer) → verdict: BUY, TEST, WAIT, RENEGOTIATE, REJECT, ESCALATE.
+- **Commit** requires user confirmation of max loss; status tracks open moves until review date or close.
+- Playbook steps are user-executed on external platforms.
+
+#### Daily money router
+- Trigger: `POST /wealth/inflow` (optional `preview: true` without save).
+- **Order:** (1) tax set-aside on business/side income, (2) essentials still uncovered this calendar month, (3) remainder by mode split on fund / debt / invest / life / bet.
+- **Remainder splits:** seed 70/0/0/20/10 · measured 45/15/5/20/15 · deploy 0/15/45/20/20 (percent of remainder after tax + essentials).
+- Bet slice capped by monthly risk budget remaining; overflow returns to fund (or invest when fund full).
+- **Tax rate (open decision):** code applies **25% floor** for self-employed when business budget tax % is lower; advisor memory may target **30%**—owner must choose default (override per deposit via `tax_pct`).
+- **Moved it:** `POST /wealth/inflow/done` marks a route done; `fund` updates `stability_fund_balance`, `invest` updates `wealth_state_json.investments`.
+
+#### Account toolbox
+- Catalog: HYSA, quarterly tax (1040-ES), high-APR debt avalanche, Roth IRA, Treasury bills, SEP IRA, Solo 401(k), HSA, broad index fund.
+- Status per item: **now** / **next** / **later** / **check** (e.g. HDHP for HSA) from fund % and employment type.
+- Limits sourced from IRS/Bankrate with `researched_on` date; **re-verify every January** (not live API).
+
+#### North Star
+- `north_star_json`: target net worth, target date, label.
+- Trajectory: current net worth, % of target, required monthly gain (`compute_trajectory`).
 
 ---
 
@@ -470,10 +627,11 @@ Cross-cutting analyst. Builds **Velocity Tracker**, **Reputation Credit Dashboar
 
 | Principle | Implementation |
 |-----------|----------------|
-| **Silent Dashboard** | Max 3 KPIs; no charts unless user requests; muted palette |
+| **Silent Dashboard** | One hero number with dial; month strip (income, bills, bet budget, tax set-aside); no decorative charts |
+| **Hero lens** | Clicking Income, Essentials, Fund, Net worth, or Max loss replaces pulse cards with guidance and next actions for that metric |
 | **Identity Notifications** | Behavioral Mirror generates identity-frame messages only |
 | **Solitude Mode** | 6-Month Focus Season; suppresses consumption prompts and non-essential agent chatter |
-| **Intentional Invisibility** | Locked modules hidden (not grayed teaser)—user discovers by stage progression |
+| **Intentional Invisibility** | Locked toolbox items shown as **Next unlock** / **Later** with exact gate text (fund %, HDHP, etc.) |
 
 ---
 
@@ -491,6 +649,25 @@ Future (15%)     → Stability Fund, debt snowball, investments
 Essentials (65%) → Non-negotiable operating and living costs
 Life (20%)       → Discretionary; subject to 72-hour pause rule
 ```
+
+### Money authority (Level 4 human)
+- APIs and agents **recommend, route, underwrite, and track** only.
+- User moves funds at banks/brokers/exchanges; **Moved it** and **Commit** are attestations, not payment rails.
+
+### OmniWealth API surface (`/wealth`)
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/wealth/command` | Net worth, trajectory, allocation, moves, move_types |
+| GET | `/wealth/today` | Daily panel: open routes, month totals, toolbox, tax deadline |
+| POST | `/wealth/inflow` | Route a deposit (body: amount, source, kind, date, tax_pct, preview) |
+| POST | `/wealth/inflow/done` | Mark one route slice done (inflow_id, key) |
+| POST | `/wealth/state` | Update wealth_state_json (cash, investments, etc.) |
+| POST | `/wealth/north-star` | Set North Star target |
+| POST | `/wealth/moves/underwrite` | Two-key evaluate + store underwritten move |
+| POST | `/wealth/moves/commit` | Log open move after user confirms max loss |
+| POST | `/wealth/moves/close` | Close move with result/profit |
+| POST | `/wealth/reinvest/compare` | Internal vs external reinvest math |
+| GET | `/wealth/weekly-review` | Weekly snapshot + stale move list |
 
 ### Security — Step-Up Basis Vault
 - `EncryptSovereignVault` uses Fernet symmetric encryption.
@@ -523,17 +700,18 @@ COMPOSIO_API_KEY=              # Optional — accounting integrations
 ## Agent Communication Topology
 
 ```
-User → Architect Orchestrator
-         ├── Behavioral Mirror      (behavior, pause, identity)
-         ├── Cash Flow Engineer     (15/65/20, Stability Fund, debt snowball)
-         ├── Opportunity Scanner    (Invisible Gaps, Money Velocity)
-         ├── Leverage Strategist    (Spread, Asset Formula, Skill Stacking)
-         ├── Reputation Validator   (Reputation Credit, provider vetting)
-         ├── Legacy Architect       (Buy-Borrow-Die, Step-Up Basis Vault)
-         └── Financial Analyst      (dashboards, Plaid feeds, Solitude Mode)
+User → Architect Orchestrator ──┬── Core specialists
+       Studio Orchestrator ──────┤    Behavioral Mirror, Cash Flow Engineer
+                                 │    Opportunity Scanner, Risk Officer, Capital Allocator
+                                 │    Leverage Strategist, Reputation Validator, Legacy Architect
+                                 ├── Wealth support
+                                 │    Financial Analyst, Tax Strategist, Discipline Controller
+                                 │    Arbitrage Scout, Wealth Architect
+                                 └── Content (Studio entry)
+                                      Docs, Slides, Image Generation, Video Generation
 ```
 
-All specialists hand off to each other and back to Orchestrator. Financial Analyst supports all agents on data requests.
+Each entry agent can **SendMessage** to every specialist. **Handoff** is enabled between all agents (full mesh). Command Center and `/wealth/*` serve the daily router without replacing chat.
 
 ---
 
@@ -542,6 +720,8 @@ All specialists hand off to each other and back to Orchestrator. Financial Analy
 | Metric | Target |
 |--------|--------|
 | Stability Fund funded | 3–6 months essentials within stage timeline |
+| Every deposit routed same day | 100% of logged inflows have a route plan before discretionary spend |
+| Tax set-aside on track | Cumulative tax routes align with next 1040-ES due date |
 | Income density improvement | ≥ 20% revenue/hour in Skill Stacking |
 | Positive spread assets | ≥ 1 before Sovereignty |
 | Money Velocity | Increasing recycle rate quarter-over-quarter |

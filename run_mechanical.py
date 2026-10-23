@@ -29,7 +29,7 @@ def _port_free(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            s.bind(("0.0.0.0", port))
+            s.bind(("127.0.0.1", port))
             return True
         except OSError:
             return False
@@ -61,4 +61,4 @@ if __name__ == "__main__":
     logger.info("  Admin (ops):    %s/static/admin/", base)
     logger.info("=" * 60)
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="127.0.0.1", port=port)

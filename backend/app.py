@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.database import get_db, init_db
@@ -18,7 +19,12 @@ def register_mechanical_routes(app: FastAPI) -> None:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "http://127.0.0.1:8090",
+            "http://localhost:8090",
+            "http://127.0.0.1:8091",
+            "http://localhost:8091",
+        ],
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -49,7 +55,7 @@ def register_mechanical_routes(app: FastAPI) -> None:
 
     @app.get("/", include_in_schema=False)
     def root():
-        return RedirectResponse(url="/static/get-started.html")
+        return RedirectResponse(url="/static/index.html")
 
     @app.get("/reputation/character-mirror", tags=["reputation"])
     def reputation_character_mirror_alias(
@@ -84,6 +90,21 @@ def register_mechanical_routes(app: FastAPI) -> None:
     @app.get("/health/mechanical")
     def mechanical_health():
         return {"status": "ok", "service": "integrity-engine"}
+
+    @app.get("/advisor/status")
+    def advisor_status():
+        err = getattr(app.state, "advisor_error", None)
+        if err:
+            return {"available": False, "message": "advisor unavailable"}
+        return {"available": True, "message": "advisor ready"}
+
+    @app.exception_handler(Exception)
+    async def _hide_tracebacks(request: Request, exc: Exception):
+        if isinstance(exc, HTTPException):
+            return await http_exception_handler(request, exc)
+        if "text/html" in (request.headers.get("accept") or ""):
+            return HTMLResponse("<p>Something went wrong.</p>", status_code=500)
+        return JSONResponse({"detail": "Something went wrong."}, status_code=500)
 
     @app.on_event("startup")
     def _mechanical_startup():

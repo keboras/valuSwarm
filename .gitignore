@@ -1,8 +1,12 @@
 node_modules/
 mnt/
 
-# Local financial database — never commit
+# Local financial database and generated private files — never commit
 data/*.db
+uploads/
+legacy_architect/files/vault/
+**/files/**
+!**/files/.gitkeep
 .bun-cache/
 .playwright-browsers/
 

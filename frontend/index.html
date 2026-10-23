@@ -8,10 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:opsz,wght@9..144,500&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/styles.css" />
-  <link rel="stylesheet" href="/static/css/meridian.css?v=10" />
+  <link rel="stylesheet" href="/static/css/meridian.css?v=11" />
 </head>
 <body class="command meridian" data-view="pulse">
   <div class="plate" aria-hidden="true">
+    <canvas id="particles" class="particles"></canvas>
     <div class="sky"></div>
     <div class="drift"></div>
     <div class="spot"></div>
@@ -37,30 +38,41 @@
   <main class="container command-grid" id="main-standard">
     <p id="welcome-banner" class="identity hidden"></p>
     <section class="instrument" id="instrument" aria-label="Wealth instrument">
-      <div class="instrument-copy">
+      <header class="instrument-head">
         <p class="kicker"><i class="led" id="mode-lamp"></i><span id="mode-word">Small tests only</span></p>
         <p class="mode-why" id="mode-why">This label is your bet size. It stays put when you click a number.</p>
-        <p class="figure" id="hero-figure">0</p>
-        <p class="figure-sub" id="hero-sub">Pick a number below</p>
-        <div class="tick-row" id="tick-row"></div>
-        <article class="brief" id="hero-brief">
-          <h2 id="brief-title">What this number is</h2>
-          <p id="brief-what"></p>
-          <p id="brief-why"></p>
-          <ol id="brief-steps"></ol>
-          <button type="button" class="btn" id="brief-act">Next</button>
-        </article>
+      </header>
+      <div class="instrument-stage">
+        <div class="instrument-copy">
+          <p class="figure" id="hero-figure">0</p>
+          <p class="figure-sub" id="hero-sub">Pick a number below</p>
+          <p class="figure-hint" id="brief-what"></p>
+          <button type="button" class="btn btn-sm hero-act" id="brief-act">Next</button>
+        </div>
+        <figure class="gauge-wrap" aria-label="Live gauges for fund and bet budget">
+          <svg class="dial" id="dial" viewBox="0 0 200 200" role="img">
+            <circle class="dial-track" cx="100" cy="100" r="86" />
+            <circle class="dial-arc" id="dial-arc" cx="100" cy="100" r="86" />
+            <circle class="dial-track" cx="100" cy="100" r="68" />
+            <circle class="dial-arc dial-fund" id="dial-fund" cx="100" cy="100" r="68" />
+            <circle class="dial-marker" id="dial-marker" cx="100" cy="14" r="4" />
+            <text class="dial-caption" x="100" y="94" text-anchor="middle" id="dial-outer-label">—</text>
+            <text class="dial-caption sub" x="100" y="112" text-anchor="middle" id="dial-inner-label">—</text>
+          </svg>
+          <ul class="gauge-legend">
+            <li><i class="leg-outer"></i><span id="legend-outer">Outer ring</span></li>
+            <li><i class="leg-inner"></i><span id="legend-inner">Inner ring</span></li>
+          </ul>
+        </figure>
       </div>
-      <svg class="dial" id="dial" viewBox="0 0 200 200" aria-hidden="true">
-        <circle class="dial-track" cx="100" cy="100" r="86" />
-        <circle class="dial-arc" id="dial-arc" cx="100" cy="100" r="86" />
-        <circle class="dial-track" cx="100" cy="100" r="68" />
-        <circle class="dial-arc dial-fund" id="dial-fund" cx="100" cy="100" r="68" />
-        <g class="orbit">
-          <circle class="led-dot" cx="100" cy="14" r="3.2" />
-        </g>
-      </svg>
+      <div class="tick-row" id="tick-row"></div>
+      <article class="brief" id="hero-brief" hidden aria-hidden="true">
+        <h2 id="brief-title"></h2>
+        <p id="brief-why"></p>
+        <ol id="brief-steps"></ol>
+      </article>
     </section>
+    <section class="lens" id="lens" hidden></section>
     <ol class="path" id="path">
       <li><button type="button" data-go="pulse"><b>01</b> Route today's money <small>Every deposit gets a job</small></button></li>
       <li><button type="button" data-go="moves"><b>02</b> Test one idea <small>You place it. We watch.</small></button></li>
@@ -91,8 +103,6 @@
       <h3 class="routes-head" id="routes-head">Moves waiting on you</h3>
       <ol class="routes" id="route-list"></ol>
     </section>
-
-    <section class="lens" id="lens" hidden></section>
 
     <section class="card toolbox-card keep span-2" id="toolbox-card" data-deck="pulse">
       <h2>Your money toolbox</h2>
@@ -155,7 +165,7 @@
 
     <section class="card span-2" id="smart-moves-card" data-deck="moves">
       <h2>Smart Moves</h2>
-      <p class="cue">One question at a time. You still place the trade.</p>
+      <p class="cue">One question at a time. You still place the trade. <a href="#weekly-review">Weekly review</a></p>
       <p class="muted small">Bull case + kill case. If it passes, you get a checklist. You place the trade yourself, then tap Commit so we watch the deadline.</p>
       <form id="smart-move-form" class="inline-form-grid">
         <label>What is the idea? <input name="name" required placeholder="30-day tool flip, Kalshi contract…" /></label>
@@ -182,6 +192,10 @@
       <div id="smart-move-result" class="card inner hidden"></div>
       <h3 class="form-sub">Open &amp; recent moves</h3>
       <ul id="smart-move-list" class="missions"></ul>
+      <article id="weekly-review" class="card inner">
+        <h3 class="form-sub">Weekly review</h3>
+        <ul id="weekly-review-list" class="missions"></ul>
+      </article>
     </section>
 
     <section class="card" id="quick-wins-section" data-deck="pulse">
@@ -261,7 +275,7 @@
     </div>
     <p class="muted small">Noise suppressed. Exit Solitude Mode from Command Center when your hour ends.</p>
   </main>
-  <script type="module" src="/static/js/home.js?v=omni5"></script>
-  <script src="/static/js/meridian.js?v=7"></script>
+  <script type="module" src="/static/js/home.js?v=omni6"></script>
+  <script src="/static/js/meridian.js?v=8"></script>
 </body>
 </html>

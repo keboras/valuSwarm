@@ -133,8 +133,8 @@ function appendMessage(role, text, { markdown = false } = {}) {
 
 async function checkAdvisorAvailable() {
   try {
-    const res = await fetch(`${AGENCY_PATH.replace("/get_response", "/get_metadata")}`);
-    return res.ok;
+    const data = await fetchJson("/advisor/status");
+    return data.available === true;
   } catch {
     return false;
   }
@@ -223,8 +223,7 @@ requireOnboarding().then(async () => {
   const statusEl = document.getElementById("advisor-status");
   const available = await checkAdvisorAvailable();
   if (!available) {
-    statusEl.textContent =
-      "AI advisor requires the full server. Run: python server.py (with OPENAI_API_KEY). Mechanical-only mode has no chat.";
+    statusEl.textContent = "advisor unavailable";
     statusEl.classList.remove("hidden");
   }
 

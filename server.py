@@ -27,30 +27,48 @@ PORT = int(os.getenv("PORT", "8090"))
 MECHANICAL_ONLY = os.getenv("MECHANICAL_ONLY", "").lower() in ("1", "true", "yes")
 AGENCY_MODE = os.getenv("AGENCY", "financial").lower()
 
-if __name__ == "__main__":
-    if MECHANICAL_ONLY:
-        from backend.app import create_mechanical_app
+def _load_full_app():
+    from agency_swarm.integrations.fastapi import run_fastapi
+    from backend.app import register_mechanical_routes
 
+    if AGENCY_MODE == "openswarm":
+        from swarm import create_agency as create_agency_factory
+        agency_key = "open-swarm"
+    else:
+        from financial_swarm import create_agency as create_agency_factory
+        agency_key = "Architect_Blueprint"
+
+    app = run_fastapi(
+        agencies={agency_key: create_agency_factory},
+        port=PORT,
+        enable_logging=True,
+        allowed_local_file_dirs=["./uploads", "./mnt"],
+        return_app=True,
+    )
+    register_mechanical_routes(app)
+    return app
+
+
+def build_app():
+    """Start the web app. If the advisor cannot load, the rest of the app still runs."""
+    from backend.app import create_mechanical_app
+
+    advisor_error = None
+    if MECHANICAL_ONLY:
         app = create_mechanical_app()
     else:
-        from agency_swarm.integrations.fastapi import run_fastapi
-        from backend.app import register_mechanical_routes
+        try:
+            app = _load_full_app()
+        except Exception as exc:
+            advisor_error = f"{type(exc).__name__}: {exc}"
+            logger.exception("Advisor unavailable; starting the web app without it")
+            app = create_mechanical_app()
+    app.state.advisor_error = advisor_error
+    return app
 
-        if AGENCY_MODE == "openswarm":
-            from swarm import create_agency as create_agency_factory
-            agency_key = "open-swarm"
-        else:
-            from financial_swarm import create_agency as create_agency_factory
-            agency_key = "Architect_Blueprint"
 
-        app = run_fastapi(
-            agencies={agency_key: create_agency_factory},
-            port=PORT,
-            enable_logging=True,
-            allowed_local_file_dirs=["./uploads", "./mnt"],
-            return_app=True,
-        )
-        register_mechanical_routes(app)
+if __name__ == "__main__":
+    app = build_app()
 
     base = f"http://localhost:{PORT}"
     logger.info("=" * 60)
@@ -63,4 +81,4 @@ if __name__ == "__main__":
         logger.info("  Studio:        %s/static/studio.html", base)
     logger.info("=" * 60)
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="127.0.0.1", port=PORT)

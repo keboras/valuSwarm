@@ -1,6 +1,7 @@
 """OmniWealth Command Center — net worth, risk budget, smart moves."""
 
 import json
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,11 +11,14 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user_profile import UserProfile
 from backend.services.omni_wealth import (
+    EVIDENCE_LABELS,
     INFLOW_KINDS,
     MOVE_TYPES,
+    append_journal,
     command_center_payload,
     compare_reinvestment,
     evaluate_move,
+    list_journal,
     mark_route_done,
     route_inflow,
     save_inflow,
@@ -47,6 +51,8 @@ class WealthStateBody(BaseModel):
     tax_liabilities: float | None = None
     other_liabilities: float | None = None
     as_of: str | None = None
+    confirm: bool = False
+    grades: dict[str, str] | None = None
 
 
 class NorthStarBody(BaseModel):
@@ -76,6 +82,7 @@ class UnderwriteBody(BaseModel):
 class CommitBody(BaseModel):
     move_id: str
     confirm_max_loss: bool = Field(default=False)
+    kill_answers: dict[str, str] = Field(default_factory=dict)
 
 
 class CloseBody(BaseModel):
@@ -104,6 +111,7 @@ class InflowBody(BaseModel):
 class RouteDoneBody(BaseModel):
     inflow_id: str
     key: str
+    confirm: bool = False
 
 
 @router.get("/today")
@@ -127,11 +135,16 @@ def wealth_inflow(body: InflowBody, user_id: str = Query(default="default"), db:
 @router.post("/inflow/done")
 def wealth_inflow_done(body: RouteDoneBody, user_id: str = Query(default="default"), db: Session = Depends(get_db)):
     profile = _profile(db, user_id)
-    flow = mark_route_done(profile, body.inflow_id, body.key)
+    if not body.confirm:
+        flow = mark_route_done(profile, body.inflow_id, body.key, apply=False)
+        if not flow:
+            raise HTTPException(status_code=404, detail="Route not found or already done")
+        return {"needs_confirm": True, "diff": flow.get("preview"), "inflow": flow, "today": today_payload(profile)}
+    flow = mark_route_done(profile, body.inflow_id, body.key, apply=True)
     if not flow:
         raise HTTPException(status_code=404, detail="Route not found or already done")
     db.commit()
-    return {"inflow": flow, "today": today_payload(profile)}
+    return {"needs_confirm": False, "inflow": flow, "today": today_payload(profile)}
 
 
 @router.get("/command")
@@ -148,10 +161,23 @@ def wealth_weekly(user_id: str = Query(default="default"), db: Session = Depends
 def wealth_state(body: WealthStateBody, user_id: str = Query(default="default"), db: Session = Depends(get_db)):
     profile = _profile(db, user_id)
     current = json.loads(profile.wealth_state_json or "{}")
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    current.update(updates)
-    current["as_of"] = body.as_of or datetime.now(timezone.utc).date().isoformat()
-    profile.wealth_state_json = json.dumps(current)
+    dumped = body.model_dump()
+    updates = {k: v for k, v in dumped.items() if v is not None and k not in ("confirm", "grades", "as_of")}
+    proposed = {**current, **updates}
+    proposed["as_of"] = body.as_of or datetime.now(timezone.utc).date().isoformat()
+    diff = {"before": current, "after": proposed}
+    if not body.confirm:
+        return {"needs_confirm": True, "diff": diff}
+    if body.grades:
+        bad = [g for g in body.grades.values() if g not in EVIDENCE_LABELS]
+        if bad:
+            raise HTTPException(status_code=400, detail=f"Unknown evidence label: {bad}")
+        grades = json.loads(profile.figure_grades_json or "{}")
+        as_of = proposed["as_of"]
+        for key, grade in body.grades.items():
+            grades[key] = {"grade": grade, "as_of": as_of}
+        profile.figure_grades_json = json.dumps(grades)
+    profile.wealth_state_json = json.dumps(proposed)
     db.commit()
     return command_center_payload(profile)
 
@@ -193,26 +219,44 @@ def wealth_commit(body: CommitBody, user_id: str = Query(default="default"), db:
         raise HTTPException(status_code=400, detail=f"Cannot commit a {packet.get('verdict')} verdict")
     if not body.confirm_max_loss:
         raise HTTPException(status_code=400, detail="Confirm you accept the max loss before committing")
-    reconstructed = evaluate_move(
+    reasons = (packet.get("packet") or packet).get("kill_case", {}).get("reasons") or packet.get("kill_case", {}).get("reasons") or []
+    stored_packet = packet.get("packet") or packet
+    reasons = (stored_packet.get("kill_case") or {}).get("reasons") or []
+    answers = body.kill_answers or stored_packet.get("kill_answers") or {}
+    missing = [str(i) for i, _ in enumerate(reasons) if not str(answers.get(str(i), "")).strip()]
+    if missing:
+        raise HTTPException(status_code=400, detail="Answer every kill reason before committing")
+    committed = {
+        **stored_packet,
+        "kill_answers": answers,
+        "verdict": packet.get("verdict"),
+        "committed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    upsert_move(profile, committed, status="open")
+    fixture = bool(os.getenv("PYTEST_CURRENT_TEST")) or user_id.startswith("fixture") or user_id == "test"
+    append_journal(
         profile,
         {
-            "move_id": packet["move_id"],
-            "name": packet["name"],
-            "move_type": packet["move_type"],
-            "capital_required": packet.get("capital_required", 0),
-            "max_loss": packet.get("max_loss"),
-            "recycle_days": 14,
-            "exit_plan": "Committed with max-loss confirmation",
+            "at": committed["committed_at"],
+            "kind": "commit",
+            "move_id": body.move_id,
+            "packet": stored_packet,
+            "answers": answers,
+            "confirm_max_loss": True,
+            "fixture": fixture,
         },
     )
-    reconstructed["committed_at"] = datetime.now(timezone.utc).isoformat()
-    upsert_move(profile, reconstructed, status="open")
     db.commit()
     return {
         "status": "open",
         "message": "Logged. Execute the playbook yourself — the system will watch the review date.",
-        "move": reconstructed,
+        "move": committed,
     }
+
+
+@router.get("/journal")
+def wealth_journal(user_id: str = Query(default="default"), db: Session = Depends(get_db)):
+    return {"entries": list_journal(_profile(db, user_id))}
 
 
 @router.post("/moves/close")
