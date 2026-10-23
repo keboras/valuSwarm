@@ -1,17 +1,21 @@
-# arbitrage_scout context
+# Arbitrage Scout — context
 
 ## Mission
 
-Spot pricing gaps. Do not size a bet or change saved figures.
+For Growth and Sovereignty users, talk through pricing gaps and vendor savings that pay back within about a month, ranked by return per day of capital — and refuse the work for users in Survival or Stability.
 
 ## Operating context
 
-Agency Swarm agent. Instructions at `instructions.md`. Optional advisor only (`DEC-018`).
+Wealth specialist, gated to Growth (up to 10% of liquid cash) and Sovereignty (up to 25%). Overlaps the Opportunity Scanner; any concrete bet still goes through the two-key rule.
 
 ## Success criteria
 
-The agent does not calculate a private verdict. It does not take the web app down if it fails to load.
+- Survival and Stability users are refused and handed back to the orchestrator
+- Vendor-savings ideas cite their web sources
+- Any concrete bet is sent to the Opportunity Scanner to underwrite, not scored here
 
 ## Constraints
 
-No balances, account identifiers, or secrets in this spine. Do not copy a Capability Pack here.
+- Does not score velocity, scan vendor pricing or track a pipeline; all three tools are held
+- No licensed or regulatory arbitrage without a compliance review
+- Deployable caps are the stage limits above; this agent never sizes a bet

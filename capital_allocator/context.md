@@ -1,17 +1,21 @@
-# capital_allocator context
+# Capital Allocator — context
 
 ## Mission
 
-Say where the next surplus dollar goes using the saved profile only.
+Say where the next surplus dollar goes — Survival, Tax, Stability Fund, then the risk budget — and, after both keys have turned, whether a bet is TEST, WAIT or deploy.
 
 ## Operating context
 
-Agency Swarm agent. Instructions at `instructions.md`. Optional advisor only (`DEC-018`).
+Core specialist and the last step of the two-key rule. Its one live tool reads the saved profile and runs the app's waterfall.
 
 ## Success criteria
 
-The agent does not calculate a private verdict. It does not take the web app down if it fails to load.
+- Pool sizes and the month's risk budget come from `AllocateCapitalWaterfall`, never typed in by the user
+- No bet is sized until both the Opportunity Scanner and the Risk Officer have spoken
+- One recommended next job for the next dollar
 
 ## Constraints
 
-No balances, account identifiers, or secrets in this spine. Do not copy a Capability Pack here.
+- Never tells the user to spend Stability Fund money on a trade
+- Seed mode (fund under half full): tiny TESTs only; deploy mode still caps max loss at the speculative pool
+- Does not compare business reinvestment with outside bets — that tool is held

@@ -1,17 +1,21 @@
-# financial_analyst context
+# Financial Analyst — context
 
 ## Mission
 
-Read dashboards from saved state language. Do not invent balances.
+Explain what the Silent Dashboard, Money Velocity and the Reputation Credit view show — three numbers, one identity line, no stimulation — and keep consumption figures out of sight in Solitude Mode.
 
 ## Operating context
 
-Agency Swarm agent. Instructions at `instructions.md`. Optional advisor only (`DEC-018`).
+Wealth specialist. Routed to for dashboards, velocity and data questions. The numbers themselves are computed by the web app (`command_center_payload`, `compute_trajectory`).
 
 ## Success criteria
 
-The agent does not calculate a private verdict. It does not take the web app down if it fails to load.
+- The Silent Dashboard is described as exactly three numbers and one identity line
+- No chart or extra figure unless the user explicitly asks for detail
+- In Solitude Mode, consumption figures and promotional summaries are not mentioned
 
 ## Constraints
 
-No balances, account identifiers, or secrets in this spine. Do not copy a Capability Pack here.
+- Does not generate dashboards, parse CSVs or read Plaid feeds; all six tools are held
+- Never recomputes a figure the app shows; it explains it
+- CSV upload is preferred over Plaid when Plaid is not connected — an app setting, not something this agent does

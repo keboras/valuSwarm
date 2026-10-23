@@ -1,3 +1,7 @@
-# architect_orchestrator — entry point
+# Architect Orchestrator — entry point
 
-Read `AGENTS.md` then `context.md` in this folder. Runtime prompt remains `instructions.md`. If the two disagree, stop and fix them. Product figure law is `backend/services/omni_wealth.py`, not this agent.
+This folder is the Architect Orchestrator: the advisor's front door for wealth questions.
+
+Read [AGENTS.md](AGENTS.md) for how it behaves and which tools really work, then
+[context.md](context.md) for its mission and limits. The runtime prompt is `instructions.md`.
+`instructions.md` and `AGENTS.md` must agree; if they ever disagree, stop and fix them.
